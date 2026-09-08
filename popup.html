@@ -2,13 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <title>مراقب أسعار الألعاب</title>
+  <title>Steam Price Watcher</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
   <div class="app">
     <header class="app-header">
-      <h1>مراقب أسعار Steam</h1>
+      <div class="title-row">
+        <h1 id="appTitle">مراقب أسعار Steam</h1>
+        <select id="langSelect" class="lang-select">
+          <option value="ar">AR</option>
+          <option value="en">EN</option>
+        </select>
+      </div>
       <div class="status-row">
         <span id="statusText" class="status-text">...</span>
         <button id="refreshBtn" class="icon-btn" title="فحص الآن">⟳</button>
@@ -28,7 +34,7 @@
           <span id="selectedName"></span>
         </div>
         <div class="target-row">
-          <label for="targetPriceInput">نبّهني إذا نزل السعر إلى:</label>
+          <label id="targetPriceLabelText" for="targetPriceInput">نبّهني إذا نزل السعر إلى:</label>
           <input id="targetPriceInput" type="number" step="0.01" min="0" placeholder="مثال: 10.00" />
           <button id="confirmAddBtn">إضافة</button>
           <button id="cancelAddBtn" class="secondary">إلغاء</button>
@@ -37,9 +43,11 @@
     </section>
 
     <section class="settings">
-      <label for="intervalSelect">فحص كل:</label>
+      <label id="intervalLabelText" for="intervalSelect">فحص كل:</label>
       <select id="intervalSelect">
-        <option value="1">ساعة</option>
+        <option value="1">ساعة واحدة</option>
+        <option value="3">3 ساعات</option>
+        <option value="6">6 ساعات</option>
         <option value="12">12 ساعة</option>
         <option value="24">يوم كامل (24 ساعة)</option>
       </select>
@@ -51,6 +59,8 @@
     </section>
   </div>
 
+  <script src="translations.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
+

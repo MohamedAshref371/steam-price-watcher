@@ -1,5 +1,7 @@
 // popup.js — واجهة الإضافة
 
+const appTitleEl = document.getElementById("appTitle");
+const langSelect = document.getElementById("langSelect");
 const statusText = document.getElementById("statusText");
 const refreshBtn = document.getElementById("refreshBtn");
 const searchInput = document.getElementById("searchInput");
@@ -8,14 +10,23 @@ const searchResultsEl = document.getElementById("searchResults");
 const addForm = document.getElementById("addForm");
 const selectedImg = document.getElementById("selectedImg");
 const selectedName = document.getElementById("selectedName");
+const targetPriceLabelText = document.getElementById("targetPriceLabelText");
 const targetPriceInput = document.getElementById("targetPriceInput");
 const confirmAddBtn = document.getElementById("confirmAddBtn");
 const cancelAddBtn = document.getElementById("cancelAddBtn");
+const intervalLabelText = document.getElementById("intervalLabelText");
 const intervalSelect = document.getElementById("intervalSelect");
 const gamesListEl = document.getElementById("gamesList");
 const emptyStateEl = document.getElementById("emptyState");
 
 let selectedGame = null;
+let currentLang = "ar";
+let currentGames = [];
+let currentLastChecked = null;
+
+function tr() {
+  return t(currentLang);
+}
 
 function sendMessage(type, payload = {}) {
   return new Promise((resolve, reject) => {
@@ -25,7 +36,7 @@ function sendMessage(type, payload = {}) {
         return;
       }
       if (!response || !response.ok) {
-        reject(new Error((response && response.error) || "خطأ غير معروف"));
+        reject(new Error((response && response.error) || "Unknown error"));
         return;
       }
       resolve(response.data);
@@ -34,18 +45,49 @@ function sendMessage(type, payload = {}) {
 }
 
 function formatRelativeTime(ts) {
-  if (!ts) return "لم يتم الفحص بعد";
+  const T = tr();
+  if (!ts) return T.neverChecked;
   const diffMs = Date.now() - ts;
   const mins = Math.round(diffMs / 60000);
-  if (mins < 1) return "الآن";
-  if (mins < 60) return `قبل ${mins} دقيقة`;
+  if (mins < 1) return T.justNow;
+  if (mins < 60) return T.minutesAgo(mins);
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `قبل ${hours} ساعة`;
+  if (hours < 24) return T.hoursAgo(hours);
   const days = Math.round(hours / 24);
-  return `قبل ${days} يوم`;
+  return T.daysAgo(days);
 }
 
+// ---------- تطبيق النصوص الثابتة حسب اللغة ----------
+
+function applyStaticTexts() {
+  const T = tr();
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = T.dir;
+
+  appTitleEl.textContent = T.appTitle;
+  refreshBtn.title = T.refreshTitle;
+  searchInput.placeholder = T.searchPlaceholder;
+  searchBtn.textContent = T.searchBtn;
+  targetPriceLabelText.textContent = T.targetPriceLabel;
+  targetPriceInput.placeholder = T.targetPricePlaceholder;
+  confirmAddBtn.textContent = T.addBtn;
+  cancelAddBtn.textContent = T.cancelBtn;
+  intervalLabelText.textContent = T.intervalLabel;
+  emptyStateEl.textContent = T.emptyState;
+
+  const intervalOptions = intervalSelect.querySelectorAll("option");
+  intervalOptions[0].textContent = T.interval1;
+  intervalOptions[1].textContent = T.interval3;
+  intervalOptions[2].textContent = T.interval6;
+  intervalOptions[3].textContent = T.interval12;
+  intervalOptions[4].textContent = T.interval24;
+}
+
+// ---------- عرض قائمة الألعاب ----------
+
 function renderGames(games) {
+  currentGames = games;
+  const T = tr();
   gamesListEl.innerHTML = "";
   if (!games.length) {
     emptyStateEl.classList.remove("hidden");
@@ -66,23 +108,23 @@ function renderGames(games) {
       ? "—"
       : game.lastFormattedPrice != null
       ? game.lastFormattedPrice
-      : "جارٍ الفحص...";
+      : T.pendingCheck;
 
     li.innerHTML = `
       <div class="row1">
         <span class="game-name">${escapeHtml(game.name)}</span>
-        <button class="remove-btn" title="حذف">✕</button>
+        <button class="remove-btn" title="${escapeHtml(T.removeTitle)}">✕</button>
       </div>
       <div class="row1">
         <span class="game-price ${reached ? "" : "above-target"}">${escapeHtml(priceLabel)}</span>
         <span>
           ${game.lastDiscount ? `<span class="discount-badge">-${game.lastDiscount}%</span>` : ""}
-          ${reached ? `<span class="reached-badge">وصل الهدف!</span>` : ""}
+          ${reached ? `<span class="reached-badge">${escapeHtml(T.reachedBadge)}</span>` : ""}
         </span>
       </div>
       <div class="game-meta">
-        <span>الهدف: ${game.targetPrice != null ? game.targetPrice : "—"}</span>
-        <span>آخر فحص: ${formatRelativeTime(game.lastCheckedAt)}</span>
+        <span>${escapeHtml(T.targetMetaLabel)} ${game.targetPrice != null ? game.targetPrice : "—"}</span>
+        <span>${escapeHtml(T.lastCheckedPrefix)} ${formatRelativeTime(game.lastCheckedAt)}</span>
       </div>
       ${game.lastError ? `<span class="error-text">${escapeHtml(game.lastError)}</span>` : ""}
     `;
@@ -102,21 +144,38 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-async function refreshStatus(lastChecked) {
-  statusText.textContent = `آخر فحص: ${formatRelativeTime(lastChecked)}`;
+function refreshStatus(lastChecked) {
+  currentLastChecked = lastChecked;
+  statusText.textContent = `${tr().lastCheckedPrefix} ${formatRelativeTime(lastChecked)}`;
 }
+
+// ---------- تهيئة أولية ----------
 
 // نافذة الإضافة تعرض فقط آخر حالة محفوظة — الفحص التلقائي عند تجاوز المدة
 // يتم عند إقلاع المتصفح نفسه (في background.js)، وليس عند فتح هذه النافذة.
 async function init() {
   const state = await sendMessage("GET_STATE");
+  currentLang = state.settings.language || "ar";
+  langSelect.value = currentLang;
   intervalSelect.value = String(state.settings.intervalHours);
+
+  applyStaticTexts();
   renderGames(state.games);
   refreshStatus(state.lastChecked);
 }
 
+// ---------- أحداث ----------
+
+langSelect.addEventListener("change", async () => {
+  currentLang = langSelect.value;
+  await sendMessage("UPDATE_SETTINGS", { patch: { language: currentLang } });
+  applyStaticTexts();
+  renderGames(currentGames);
+  refreshStatus(currentLastChecked);
+});
+
 refreshBtn.addEventListener("click", async () => {
-  statusText.textContent = "جارٍ الفحص...";
+  statusText.textContent = tr().checking;
   const result = await sendMessage("FORCE_CHECK");
   renderGames(result.games);
   refreshStatus(Date.now());
@@ -134,12 +193,13 @@ searchInput.addEventListener("keydown", e => {
 async function doSearch() {
   const term = searchInput.value.trim();
   if (!term) return;
-  searchResultsEl.innerHTML = "<p style='padding:6px;color:#8f98a0;'>جارٍ البحث...</p>";
+  const T = tr();
+  searchResultsEl.innerHTML = `<p style='padding:6px;color:#8f98a0;'>${escapeHtml(T.searching)}</p>`;
   searchResultsEl.classList.remove("hidden");
   try {
     const results = await sendMessage("SEARCH_GAME", { term });
     if (!results.length) {
-      searchResultsEl.innerHTML = "<p style='padding:6px;color:#8f98a0;'>لا توجد نتائج</p>";
+      searchResultsEl.innerHTML = `<p style='padding:6px;color:#8f98a0;'>${escapeHtml(T.noResults)}</p>`;
       return;
     }
     searchResultsEl.innerHTML = "";
@@ -174,7 +234,7 @@ confirmAddBtn.addEventListener("click", async () => {
   if (!selectedGame) return;
   const targetPrice = parseFloat(targetPriceInput.value);
   if (isNaN(targetPrice) || targetPrice < 0) {
-    alert("رجاءً أدخل سعراً صحيحاً");
+    alert(tr().invalidPriceAlert);
     return;
   }
   const games = await sendMessage("ADD_GAME", {
@@ -190,6 +250,7 @@ confirmAddBtn.addEventListener("click", async () => {
   setTimeout(async () => {
     const state = await sendMessage("GET_STATE");
     renderGames(state.games);
+    refreshStatus(state.lastChecked);
   }, 1500);
 });
 

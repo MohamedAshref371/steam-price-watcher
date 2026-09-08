@@ -1,9 +1,12 @@
 // background.js — service worker: يدير الجدولة، الفحص، والتنبيهات
 
+importScripts("translations.js");
+
 const ALARM_NAME = "price-check-alarm";
 const DEFAULT_SETTINGS = {
-  intervalHours: 12,   // 1 أو 12 أو 24
-  countryCode: "us"    // كود الدولة المستخدم في أسعار Steam (يؤثر على العملة)
+  intervalHours: 12,   // 1 أو 3 أو 6 أو 12 أو 24
+  countryCode: "us",   // كود الدولة المستخدم في أسعار Steam (يؤثر على العملة)
+  language: "ar"        // ar أو en
 };
 
 // ---------- تخزين ----------
@@ -32,10 +35,10 @@ async function setLastChecked(ts) {
 // ---------- Steam API ----------
 
 // يبحث عن لعبة بالاسم ويرجع قائمة نتائج {appid, name, image}
-async function searchGames(term, countryCode) {
+async function searchGames(term, countryCode, tr) {
   const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(term)}&cc=${countryCode}&l=english`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error("فشل البحث في متجر Steam");
+  if (!res.ok) throw new Error(tr.searchError);
   const data = await res.json();
   return (data.items || []).map(item => ({
     appid: item.id,
@@ -57,7 +60,7 @@ async function fetchPrice(appid, countryCode) {
   const overview = entry.data && entry.data.price_overview;
   if (!overview) {
     // قد تكون اللعبة مجانية أو غير متوفرة في هذه المنطقة
-    return { ok: true, free: true, currentPrice: 0, currency: null, discountPercent: 0, formatted: "مجانية" };
+    return { ok: true, free: true, currentPrice: 0, currency: null, discountPercent: 0, formatted: null };
   }
   return {
     ok: true,
@@ -74,6 +77,8 @@ async function fetchPrice(appid, countryCode) {
 
 async function checkAllGames({ notify = true } = {}) {
   const { games, settings } = await getState();
+  const tr = t(settings.language);
+
   if (!games.length) {
     await setLastChecked(Date.now());
     return { games, alerts: [] };
@@ -86,7 +91,7 @@ async function checkAllGames({ notify = true } = {}) {
     try {
       const priceInfo = await fetchPrice(game.appid, settings.countryCode);
       if (!priceInfo.ok) {
-        updatedGames.push({ ...game, lastError: "تعذّر جلب السعر" });
+        updatedGames.push({ ...game, lastError: tr.errorPriceFetch });
         continue;
       }
 
@@ -94,7 +99,7 @@ async function checkAllGames({ notify = true } = {}) {
         ...game,
         lastError: null,
         lastPrice: priceInfo.currentPrice,
-        lastFormattedPrice: priceInfo.formatted,
+        lastFormattedPrice: priceInfo.free ? tr.freeLabel : priceInfo.formatted,
         lastCurrency: priceInfo.currency,
         lastDiscount: priceInfo.discountPercent || 0,
         lastCheckedAt: Date.now()
@@ -118,7 +123,7 @@ async function checkAllGames({ notify = true } = {}) {
 
       updatedGames.push(updated);
     } catch (e) {
-      updatedGames.push({ ...game, lastError: "خطأ أثناء الفحص" });
+      updatedGames.push({ ...game, lastError: tr.errorGeneric });
     }
   }
 
@@ -127,20 +132,20 @@ async function checkAllGames({ notify = true } = {}) {
 
   if (notify) {
     for (const a of alerts) {
-      fireNotification(a.game, a.priceInfo);
+      fireNotification(a.game, a.priceInfo, tr);
     }
   }
 
   return { games: updatedGames, alerts };
 }
 
-function fireNotification(game, priceInfo) {
+function fireNotification(game, priceInfo, tr) {
   const idSafe = `price-alert-${game.id}-${Date.now()}`;
   chrome.notifications.create(idSafe, {
     type: "basic",
     iconUrl: "icons/icon128.png",
-    title: "نزل سعر لعبتك! 🎮",
-    message: `${game.name}: صار السعر ${priceInfo.formatted} (هدفك كان ${game.targetPrice} ${game.currencyLabel || ""})`,
+    title: tr.notifTitle,
+    message: tr.notifMessage(game.name, priceInfo.formatted, `${game.targetPrice} ${game.currencyLabel || ""}`.trim()),
     priority: 2
   });
 }
@@ -200,7 +205,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case "SEARCH_GAME": {
           const { settings } = await getState();
-          const results = await searchGames(msg.term, settings.countryCode);
+          const tr = t(settings.language);
+          const results = await searchGames(msg.term, settings.countryCode, tr);
           sendResponse({ ok: true, data: results });
           break;
         }

@@ -13,8 +13,23 @@ body {
 
 .app-header h1 {
   font-size: 16px;
-  margin: 0 0 6px 0;
+  margin: 0;
   color: #66c0f4;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.lang-select {
+  flex: none;
+  width: auto;
+  padding: 3px 6px;
+  font-size: 11px;
 }
 
 .status-row {
