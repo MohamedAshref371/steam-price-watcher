@@ -6,7 +6,8 @@ const ALARM_NAME = "price-check-alarm";
 const DEFAULT_SETTINGS = {
   intervalHours: 12,   // 1 أو 3 أو 6 أو 12 أو 24
   countryCode: "us",   // كود الدولة المستخدم في أسعار Steam (يؤثر على العملة)
-  language: "ar"        // ar أو en
+  language: "ar",       // ar أو en
+  repeatAlerts: false   // false = نبّه مرة واحدة فقط لكل سعر، true = نبّه في كل فحص طالما السعر تحت الهدف
 };
 
 // ---------- تخزين ----------
@@ -98,16 +99,27 @@ async function checkOneGame(game, settings, tr) {
       game.targetPrice != null &&
       priceInfo.currentPrice <= game.targetPrice;
 
-    // نتجنّب تكرار نفس التنبيه لنفس السعر بالضبط
-    const alreadyNotifiedForThisPrice =
-      game.notifiedAtPrice != null && game.notifiedAtPrice === priceInfo.currentPrice;
-
     let alert = null;
-    if (reachedTarget && !alreadyNotifiedForThisPrice) {
-      updated.notifiedAtPrice = priceInfo.currentPrice;
-      alert = { game: updated, priceInfo };
-    } else if (!reachedTarget) {
-      updated.notifiedAtPrice = null;
+
+    if (settings.repeatAlerts) {
+      // ينبّه في كل فحص طالما السعر لسا تحت الهدف (بدون تجاهل تكرارات نفس السعر)
+      if (reachedTarget) {
+        updated.notifiedAtPrice = priceInfo.currentPrice;
+        alert = { game: updated, priceInfo };
+      } else {
+        updated.notifiedAtPrice = null;
+      }
+    } else {
+      // السلوك الافتراضي: ينبّه مرة واحدة فقط لنفس السعر بالضبط
+      const alreadyNotifiedForThisPrice =
+        game.notifiedAtPrice != null && game.notifiedAtPrice === priceInfo.currentPrice;
+
+      if (reachedTarget && !alreadyNotifiedForThisPrice) {
+        updated.notifiedAtPrice = priceInfo.currentPrice;
+        alert = { game: updated, priceInfo };
+      } else if (!reachedTarget) {
+        updated.notifiedAtPrice = null;
+      }
     }
 
     return { updated, alert };

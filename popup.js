@@ -16,6 +16,8 @@ const confirmAddBtn = document.getElementById("confirmAddBtn");
 const cancelAddBtn = document.getElementById("cancelAddBtn");
 const intervalLabelText = document.getElementById("intervalLabelText");
 const intervalSelect = document.getElementById("intervalSelect");
+const repeatAlertsCheckbox = document.getElementById("repeatAlertsCheckbox");
+const repeatAlertsLabelText = document.getElementById("repeatAlertsLabelText");
 const gamesListEl = document.getElementById("gamesList");
 const emptyStateEl = document.getElementById("emptyState");
 
@@ -74,6 +76,7 @@ function applyStaticTexts() {
   confirmAddBtn.textContent = T.addBtn;
   cancelAddBtn.textContent = T.cancelBtn;
   intervalLabelText.textContent = T.intervalLabel;
+  repeatAlertsLabelText.textContent = T.repeatAlertsLabel;
   emptyStateEl.textContent = T.emptyState;
 
   const intervalOptions = intervalSelect.querySelectorAll("option");
@@ -194,6 +197,7 @@ async function init() {
   currentLang = state.settings.language || "ar";
   langSelect.value = currentLang;
   intervalSelect.value = String(state.settings.intervalHours);
+  repeatAlertsCheckbox.checked = !!state.settings.repeatAlerts;
 
   applyStaticTexts();
   renderGames(state.games);
@@ -219,6 +223,10 @@ refreshBtn.addEventListener("click", async () => {
 
 intervalSelect.addEventListener("change", async () => {
   await sendMessage("UPDATE_SETTINGS", { patch: { intervalHours: Number(intervalSelect.value) } });
+});
+
+repeatAlertsCheckbox.addEventListener("change", async () => {
+  await sendMessage("UPDATE_SETTINGS", { patch: { repeatAlerts: repeatAlertsCheckbox.checked } });
 });
 
 searchBtn.addEventListener("click", doSearch);

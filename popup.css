@@ -113,8 +113,26 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
   gap: 8px;
   margin-bottom: 10px;
   color: #8f98a0;
+  flex-wrap: wrap;
 }
 .settings select { flex: none; width: auto; }
+
+.repeat-alerts-row {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.repeat-alerts-row input[type="checkbox"] {
+  flex: none;
+  width: auto;
+  accent-color: #66c0f4;
+}
+.repeat-alerts-row label {
+  cursor: pointer;
+}
 
 .games-list ul { list-style: none; padding: 0; margin: 0; }
 
