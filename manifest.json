@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "مراقب أسعار الألعاب (Steam)",
+  "version": "1.0.0",
+  "description": "أضف ألعابك المفضلة وراقب سعرها على متجر Steam، واستلم تنبيهاً عند نزول السعر عن الحد الذي تحدده.",
+  "default_locale": "ar",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "permissions": ["storage", "alarms", "notifications"],
+  "host_permissions": ["https://store.steampowered.com/*"],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "steam-price-watcher@example.local",
+      "strict_min_version": "109.0"
+    }
+  }
+}
