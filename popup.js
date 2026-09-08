@@ -23,6 +23,7 @@ let selectedGame = null;
 let currentLang = "ar";
 let currentGames = [];
 let currentLastChecked = null;
+let editingGameId = null;
 
 function tr() {
   return t(currentLang);
@@ -110,10 +111,15 @@ function renderGames(games) {
       ? game.lastFormattedPrice
       : T.pendingCheck;
 
+    const isEditing = editingGameId === game.id;
+
     li.innerHTML = `
       <div class="row1">
         <span class="game-name">${escapeHtml(game.name)}</span>
-        <button class="remove-btn" title="${escapeHtml(T.removeTitle)}">✕</button>
+        <span class="card-actions">
+          <button class="edit-btn" title="${escapeHtml(T.editTitle)}">✎</button>
+          <button class="remove-btn" title="${escapeHtml(T.removeTitle)}">✕</button>
+        </span>
       </div>
       <div class="row1">
         <span class="game-price ${reached ? "" : "above-target"}">${escapeHtml(priceLabel)}</span>
@@ -127,12 +133,42 @@ function renderGames(games) {
         <span>${escapeHtml(T.lastCheckedPrefix)} ${formatRelativeTime(game.lastCheckedAt)}</span>
       </div>
       ${game.lastError ? `<span class="error-text">${escapeHtml(game.lastError)}</span>` : ""}
+      ${isEditing ? `
+        <div class="edit-target-row">
+          <input type="number" step="0.01" min="0" class="edit-target-input" value="${game.targetPrice != null ? game.targetPrice : ""}" />
+          <button class="save-target-btn">${escapeHtml(T.saveBtn)}</button>
+          <button class="cancel-edit-btn secondary">${escapeHtml(T.cancelBtn)}</button>
+        </div>
+      ` : ""}
     `;
 
     li.querySelector(".remove-btn").addEventListener("click", async () => {
       const games = await sendMessage("REMOVE_GAME", { id: game.id });
       renderGames(games);
     });
+
+    li.querySelector(".edit-btn").addEventListener("click", () => {
+      editingGameId = isEditing ? null : game.id;
+      renderGames(currentGames);
+    });
+
+    if (isEditing) {
+      const input = li.querySelector(".edit-target-input");
+      li.querySelector(".save-target-btn").addEventListener("click", async () => {
+        const newTarget = parseFloat(input.value);
+        if (isNaN(newTarget) || newTarget < 0) {
+          alert(tr().invalidPriceAlert);
+          return;
+        }
+        const games = await sendMessage("UPDATE_GAME", { id: game.id, patch: { targetPrice: newTarget } });
+        editingGameId = null;
+        renderGames(games);
+      });
+      li.querySelector(".cancel-edit-btn").addEventListener("click", () => {
+        editingGameId = null;
+        renderGames(currentGames);
+      });
+    }
 
     gamesListEl.appendChild(li);
   }
