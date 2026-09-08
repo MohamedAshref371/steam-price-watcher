@@ -43,18 +43,6 @@
     </section>
 
     <section class="settings">
-      <label id="intervalLabelText" for="intervalSelect">فحص كل:</label>
-      <select id="intervalSelect">
-        <option value="1">ساعة واحدة</option>
-        <option value="3">3 ساعات</option>
-        <option value="6">6 ساعات</option>
-        <option value="12">12 ساعة</option>
-        <option value="24">يوم كامل (24 ساعة)</option>
-      </select>
-      <div class="repeat-alerts-row">
-        <input type="checkbox" id="repeatAlertsCheckbox" />
-        <label id="repeatAlertsLabelText" for="repeatAlertsCheckbox">نبّهني في كل فحص طالما السعر تحت الهدف</label>
-      </div>
       <div class="region-row">
         <label id="regionLabelText" for="regionSelect">المنطقة/الدولة:</label>
         <select id="regionSelect">
@@ -74,6 +62,18 @@
           <option value="__custom__">…</option>
         </select>
         <input type="text" id="regionCustomInput" class="hidden" maxlength="2" placeholder="كود آخر (مثال: jp)" />
+      </div>
+      <label id="intervalLabelText" for="intervalSelect">فحص كل:</label>
+      <select id="intervalSelect">
+        <option value="1">ساعة واحدة</option>
+        <option value="3">3 ساعات</option>
+        <option value="6">6 ساعات</option>
+        <option value="12">12 ساعة</option>
+        <option value="24">يوم كامل (24 ساعة)</option>
+      </select>
+      <div class="repeat-alerts-row">
+        <input type="checkbox" id="repeatAlertsCheckbox" />
+        <label id="repeatAlertsLabelText" for="repeatAlertsCheckbox">نبّهني في كل فحص طالما السعر تحت الهدف</label>
       </div>
     </section>
 
