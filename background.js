@@ -192,24 +192,23 @@ function fireNotification(game, priceInfo, tr) {
 // ---------- الجدولة (Alarms) ----------
 
 async function rescheduleAlarm() {
-  const { settings } = await getState();
+  const { settings, lastChecked } = await getState();
   await chrome.alarms.clear(ALARM_NAME);
-  chrome.alarms.create(ALARM_NAME, {
-    periodInMinutes: Math.max(1, settings.intervalHours * 60)
-  });
-}
 
-// يتحقق: هل عدّت مدة الفحص المحددة منذ آخر فحص؟ إذا نعم يفحص فوراً
-async function checkIfStaleThenRun() {
-  const { lastChecked, settings, games } = await getState();
-  if (!games.length) return; // ما فيه شي نراقبه أصلاً
+  const periodMinutes = Math.max(1, settings.intervalHours * 60);
 
-  const intervalMs = settings.intervalHours * 60 * 60 * 1000;
-  const isStale = !lastChecked || Date.now() - lastChecked >= intervalMs;
-
-  if (isStale) {
-    await checkAllGames({ notify: true });
+  // نحسب الوقت المتبقي فعلياً منذ آخر فحص حقيقي، بدل ما نبدأ عدّ جديد من الصفر
+  let delayMinutes = periodMinutes;
+  if (lastChecked) {
+    const elapsedMinutes = (Date.now() - lastChecked) / 60000;
+    const remaining = periodMinutes - elapsedMinutes;
+    delayMinutes = remaining > 0 ? remaining : 0.1; // لو المدة عدّت أصلاً، فحص شبه فوري
   }
+
+  chrome.alarms.create(ALARM_NAME, {
+    delayInMinutes: delayMinutes,
+    periodInMinutes: periodMinutes
+  });
 }
 
 chrome.alarms.onAlarm.addListener(alarm => {
@@ -223,13 +222,11 @@ chrome.runtime.onInstalled.addListener(async () => {
   const { settings } = await getState();
   await saveSettings(settings); // يضمن حفظ القيم الافتراضية أول مرة
   await rescheduleAlarm();
-  await checkIfStaleThenRun();
 });
 
 // عند فتح/إقلاع المتصفح نفسه (وليس عند فتح نافذة الإضافة)
 chrome.runtime.onStartup.addListener(async () => {
   await rescheduleAlarm();
-  await checkIfStaleThenRun();
 });
 
 // ---------- الرسائل من الـ popup ----------
@@ -298,6 +295,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case "FORCE_CHECK": {
           const result = await checkAllGames({ notify: true });
+          await rescheduleAlarm(); // نعيد ضبط الموعد القادم بناءً على وقت هذا الفحص اليدوي
           sendResponse({ ok: true, data: result });
           break;
         }
