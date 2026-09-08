@@ -75,6 +75,48 @@ async function fetchPrice(appid, countryCode) {
 
 // ---------- منطق الفحص ----------
 
+// يفحص لعبة واحدة ويرجّع النسخة المحدّثة منها (بدون حفظ أو إشعار — تُترك للمستدعي)
+async function checkOneGame(game, settings, tr) {
+  try {
+    const priceInfo = await fetchPrice(game.appid, settings.countryCode);
+    if (!priceInfo.ok) {
+      return { updated: { ...game, lastError: tr.errorPriceFetch }, alert: null };
+    }
+
+    const updated = {
+      ...game,
+      lastError: null,
+      lastPrice: priceInfo.currentPrice,
+      lastFormattedPrice: priceInfo.free ? tr.freeLabel : priceInfo.formatted,
+      lastCurrency: priceInfo.currency,
+      lastDiscount: priceInfo.discountPercent || 0,
+      lastCheckedAt: Date.now()
+    };
+
+    const reachedTarget =
+      !priceInfo.free &&
+      game.targetPrice != null &&
+      priceInfo.currentPrice <= game.targetPrice;
+
+    // نتجنّب تكرار نفس التنبيه لنفس السعر بالضبط
+    const alreadyNotifiedForThisPrice =
+      game.notifiedAtPrice != null && game.notifiedAtPrice === priceInfo.currentPrice;
+
+    let alert = null;
+    if (reachedTarget && !alreadyNotifiedForThisPrice) {
+      updated.notifiedAtPrice = priceInfo.currentPrice;
+      alert = { game: updated, priceInfo };
+    } else if (!reachedTarget) {
+      updated.notifiedAtPrice = null;
+    }
+
+    return { updated, alert };
+  } catch (e) {
+    return { updated: { ...game, lastError: tr.errorGeneric }, alert: null };
+  }
+}
+
+// يفحص كل الألعاب المحفوظة (الفحص الدوري/اليدوي)
 async function checkAllGames({ notify = true } = {}) {
   const { games, settings } = await getState();
   const tr = t(settings.language);
@@ -88,43 +130,9 @@ async function checkAllGames({ notify = true } = {}) {
   const updatedGames = [];
 
   for (const game of games) {
-    try {
-      const priceInfo = await fetchPrice(game.appid, settings.countryCode);
-      if (!priceInfo.ok) {
-        updatedGames.push({ ...game, lastError: tr.errorPriceFetch });
-        continue;
-      }
-
-      const updated = {
-        ...game,
-        lastError: null,
-        lastPrice: priceInfo.currentPrice,
-        lastFormattedPrice: priceInfo.free ? tr.freeLabel : priceInfo.formatted,
-        lastCurrency: priceInfo.currency,
-        lastDiscount: priceInfo.discountPercent || 0,
-        lastCheckedAt: Date.now()
-      };
-
-      const reachedTarget =
-        !priceInfo.free &&
-        game.targetPrice != null &&
-        priceInfo.currentPrice <= game.targetPrice;
-
-      // نتجنّب تكرار نفس التنبيه لنفس السعر بالضبط
-      const alreadyNotifiedForThisPrice =
-        game.notifiedAtPrice != null && game.notifiedAtPrice === priceInfo.currentPrice;
-
-      if (reachedTarget && !alreadyNotifiedForThisPrice) {
-        updated.notifiedAtPrice = priceInfo.currentPrice;
-        alerts.push({ game: updated, priceInfo });
-      } else if (!reachedTarget) {
-        updated.notifiedAtPrice = null;
-      }
-
-      updatedGames.push(updated);
-    } catch (e) {
-      updatedGames.push({ ...game, lastError: tr.errorGeneric });
-    }
+    const { updated, alert } = await checkOneGame(game, settings, tr);
+    updatedGames.push(updated);
+    if (alert) alerts.push(alert);
   }
 
   await saveGames(updatedGames);
@@ -137,6 +145,25 @@ async function checkAllGames({ notify = true } = {}) {
   }
 
   return { games: updatedGames, alerts };
+}
+
+// يفحص لعبة واحدة فقط بالمعرّف (id) ويحفظ نتيجتها ضمن القائمة الحالية —
+// يُستخدم مباشرة بعد إضافة لعبة جديدة، دون إعادة فحص بقية الألعاب
+async function checkSingleGameById(gameId, { notify = true } = {}) {
+  const { games, settings } = await getState();
+  const tr = t(settings.language);
+  const target = games.find(g => g.id === gameId);
+  if (!target) return null;
+
+  const { updated, alert } = await checkOneGame(target, settings, tr);
+  const updatedGames = games.map(g => (g.id === gameId ? updated : g));
+  await saveGames(updatedGames);
+
+  if (notify && alert) {
+    fireNotification(alert.game, alert.priceInfo, tr);
+  }
+
+  return updated;
 }
 
 function fireNotification(game, priceInfo, tr) {
@@ -229,8 +256,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const updatedGames = [...games, newGame];
           await saveGames(updatedGames);
           sendResponse({ ok: true, data: updatedGames });
-          // نفحص هذه اللعبة فوراً حتى تظهر بياناتها بدون انتظار الجدول
-          checkAllGames({ notify: true });
+          // نفحص هذه اللعبة فقط فوراً حتى تظهر بياناتها — بدون إعادة فحص بقية الألعاب
+          checkSingleGameById(newGame.id, { notify: true });
           break;
         }
         case "REMOVE_GAME": {
