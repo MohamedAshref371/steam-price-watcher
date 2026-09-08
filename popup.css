@@ -134,6 +134,24 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
   cursor: pointer;
 }
 
+.region-row {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.region-row select {
+  flex: 1;
+  min-width: 120px;
+}
+.region-row input[type="text"] {
+  flex: 1;
+  min-width: 70px;
+}
+
 .games-list ul { list-style: none; padding: 0; margin: 0; }
 
 .game-card {

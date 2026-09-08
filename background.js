@@ -5,7 +5,7 @@ importScripts("translations.js");
 const ALARM_NAME = "price-check-alarm";
 const DEFAULT_SETTINGS = {
   intervalHours: 12,   // 1 أو 3 أو 6 أو 12 أو 24
-  countryCode: "us",   // كود الدولة المستخدم في أسعار Steam (يؤثر على العملة)
+  countryCode: "eg",   // كود الدولة المستخدم في أسعار Steam (يؤثر على العملة) — غيّره من إعدادات الإضافة
   language: "ar",       // ar أو en
   repeatAlerts: false   // false = نبّه مرة واحدة فقط لكل سعر، true = نبّه في كل فحص طالما السعر تحت الهدف
 };

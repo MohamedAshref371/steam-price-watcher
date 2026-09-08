@@ -55,6 +55,26 @@
         <input type="checkbox" id="repeatAlertsCheckbox" />
         <label id="repeatAlertsLabelText" for="repeatAlertsCheckbox">نبّهني في كل فحص طالما السعر تحت الهدف</label>
       </div>
+      <div class="region-row">
+        <label id="regionLabelText" for="regionSelect">المنطقة/الدولة:</label>
+        <select id="regionSelect">
+          <option value="us">United States (USD)</option>
+          <option value="eg">Egypt (EGP)</option>
+          <option value="sa">Saudi Arabia (SAR)</option>
+          <option value="ae">UAE (AED)</option>
+          <option value="kw">Kuwait (KWD)</option>
+          <option value="qa">Qatar (QAR)</option>
+          <option value="jo">Jordan (JOD)</option>
+          <option value="tr">Turkey (TRY)</option>
+          <option value="gb">United Kingdom (GBP)</option>
+          <option value="de">Germany / EU (EUR)</option>
+          <option value="in">India (INR)</option>
+          <option value="br">Brazil (BRL)</option>
+          <option value="ru">Russia (RUB)</option>
+          <option value="__custom__">…</option>
+        </select>
+        <input type="text" id="regionCustomInput" class="hidden" maxlength="2" placeholder="كود آخر (مثال: jp)" />
+      </div>
     </section>
 
     <section class="games-list">

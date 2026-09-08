@@ -18,6 +18,9 @@ const intervalLabelText = document.getElementById("intervalLabelText");
 const intervalSelect = document.getElementById("intervalSelect");
 const repeatAlertsCheckbox = document.getElementById("repeatAlertsCheckbox");
 const repeatAlertsLabelText = document.getElementById("repeatAlertsLabelText");
+const regionLabelText = document.getElementById("regionLabelText");
+const regionSelect = document.getElementById("regionSelect");
+const regionCustomInput = document.getElementById("regionCustomInput");
 const gamesListEl = document.getElementById("gamesList");
 const emptyStateEl = document.getElementById("emptyState");
 
@@ -77,6 +80,8 @@ function applyStaticTexts() {
   cancelAddBtn.textContent = T.cancelBtn;
   intervalLabelText.textContent = T.intervalLabel;
   repeatAlertsLabelText.textContent = T.repeatAlertsLabel;
+  regionLabelText.textContent = T.regionLabel;
+  regionCustomInput.placeholder = T.regionCustomPlaceholder;
   emptyStateEl.textContent = T.emptyState;
 
   const intervalOptions = intervalSelect.querySelectorAll("option");
@@ -199,6 +204,17 @@ async function init() {
   intervalSelect.value = String(state.settings.intervalHours);
   repeatAlertsCheckbox.checked = !!state.settings.repeatAlerts;
 
+  const knownRegions = Array.from(regionSelect.options).map(o => o.value).filter(v => v !== "__custom__");
+  const savedRegion = state.settings.countryCode || "us";
+  if (knownRegions.includes(savedRegion)) {
+    regionSelect.value = savedRegion;
+    regionCustomInput.classList.add("hidden");
+  } else {
+    regionSelect.value = "__custom__";
+    regionCustomInput.value = savedRegion;
+    regionCustomInput.classList.remove("hidden");
+  }
+
   applyStaticTexts();
   renderGames(state.games);
   refreshStatus(state.lastChecked);
@@ -227,6 +243,29 @@ intervalSelect.addEventListener("change", async () => {
 
 repeatAlertsCheckbox.addEventListener("change", async () => {
   await sendMessage("UPDATE_SETTINGS", { patch: { repeatAlerts: repeatAlertsCheckbox.checked } });
+});
+
+async function applyRegionChange(code) {
+  if (!code || code.length !== 2) return;
+  statusText.textContent = tr().checking;
+  await sendMessage("UPDATE_SETTINGS", { patch: { countryCode: code.toLowerCase() } });
+  const result = await sendMessage("FORCE_CHECK");
+  renderGames(result.games);
+  refreshStatus(Date.now());
+}
+
+regionSelect.addEventListener("change", async () => {
+  if (regionSelect.value === "__custom__") {
+    regionCustomInput.classList.remove("hidden");
+    regionCustomInput.focus();
+    return;
+  }
+  regionCustomInput.classList.add("hidden");
+  await applyRegionChange(regionSelect.value);
+});
+
+regionCustomInput.addEventListener("change", async () => {
+  await applyRegionChange(regionCustomInput.value.trim());
 });
 
 searchBtn.addEventListener("click", doSearch);
