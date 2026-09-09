@@ -25,11 +25,30 @@ body {
   margin-bottom: 6px;
 }
 
+.lang-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.lang-icon {
+  font-size: 14px;
+}
+
 .lang-select {
   flex: none;
   width: auto;
-  padding: 3px 6px;
-  font-size: 11px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #66c0f4;
+  border-radius: 5px;
+  background: #1b2838;
+  color: #66c0f4;
+  cursor: pointer;
+}
+.lang-select:hover {
+  background: #22323f;
 }
 
 .status-row {
