@@ -10,7 +10,12 @@ const searchResultsEl = document.getElementById("searchResults");
 const addForm = document.getElementById("addForm");
 const selectedImg = document.getElementById("selectedImg");
 const selectedName = document.getElementById("selectedName");
-const targetPriceLabelText = document.getElementById("targetPriceLabelText");
+const currentPriceLabelText = document.getElementById("currentPriceLabelText");
+const currentPriceValue = document.getElementById("currentPriceValue");
+const alertTypeLabelText = document.getElementById("alertTypeLabelText");
+const alertTypeTargetText = document.getElementById("alertTypeTargetText");
+const alertTypeSaleText = document.getElementById("alertTypeSaleText");
+const alertTypeRadios = document.querySelectorAll('input[name="alertType"]');
 const targetPriceInput = document.getElementById("targetPriceInput");
 const confirmAddBtn = document.getElementById("confirmAddBtn");
 const cancelAddBtn = document.getElementById("cancelAddBtn");
@@ -77,7 +82,10 @@ function applyStaticTexts() {
   refreshBtn.title = T.refreshTitle;
   searchInput.placeholder = T.searchPlaceholder;
   searchBtn.textContent = T.searchBtn;
-  targetPriceLabelText.textContent = T.targetPriceLabel;
+  currentPriceLabelText.textContent = T.currentPriceLabel;
+  alertTypeLabelText.textContent = T.alertTypeLabel;
+  alertTypeTargetText.textContent = T.alertTypeTargetOption;
+  alertTypeSaleText.textContent = T.alertTypeSaleOption;
   targetPriceInput.placeholder = T.targetPricePlaceholder;
   confirmAddBtn.textContent = T.addBtn;
   cancelAddBtn.textContent = T.cancelBtn;
@@ -167,7 +175,7 @@ function renderGames(games) {
         <span class="game-name">${escapeHtml(game.name)}</span>
         <span class="card-actions">
           <button class="mute-btn ${isMuted ? "is-muted" : ""}" title="${escapeHtml(isMuted ? T.unmuteTitle : T.muteTitle)}">${isMuted ? "🔕" : "🔔"}</button>
-          <button class="edit-btn" title="${escapeHtml(T.editTitle)}">✎</button>
+          ${game.alertType !== "sale" ? `<button class="edit-btn" title="${escapeHtml(T.editTitle)}">✎</button>` : ""}
           <button class="remove-btn" title="${escapeHtml(T.removeTitle)}">✕</button>
         </span>
       </div>
@@ -179,11 +187,11 @@ function renderGames(games) {
         </span>
       </div>
       <div class="game-meta">
-        <span>${escapeHtml(T.targetMetaLabel)} ${game.targetPrice != null ? game.targetPrice : "—"}</span>
+        <span>${game.alertType === "sale" ? escapeHtml(T.targetMetaSale) : `${escapeHtml(T.targetMetaLabel)} ${game.targetPrice != null ? game.targetPrice : "—"}`}</span>
         <span>${escapeHtml(T.lastCheckedPrefix)} ${formatRelativeTime(game.lastCheckedAt)}</span>
       </div>
       ${game.lastError ? `<span class="error-text">${escapeHtml(game.lastError)}</span>` : ""}
-      ${isEditing ? `
+      ${isEditing && game.alertType !== "sale" ? `
         <div class="edit-target-row">
           <input type="number" step="0.01" min="0" class="edit-target-input" value="${game.targetPrice != null ? game.targetPrice : ""}" />
           <button class="save-target-btn">${escapeHtml(T.saveBtn)}</button>
@@ -202,7 +210,7 @@ function renderGames(games) {
       renderGames(games);
     });
 
-    li.querySelector(".edit-btn").addEventListener("click", () => {
+    li.querySelector(".edit-btn")?.addEventListener("click", () => {
       editingGameId = isEditing ? null : game.id;
       renderGames(currentGames);
     });
@@ -353,13 +361,47 @@ async function doSearch() {
   }
 }
 
-function selectGame(game) {
+function setAlertTypeUI(type) {
+  const isSale = type === "sale";
+  targetPriceInput.classList.toggle("hidden", isSale);
+  targetPriceInput.required = !isSale;
+}
+
+alertTypeRadios.forEach(radio => {
+  radio.addEventListener("change", () => {
+    setAlertTypeUI(radio.value);
+  });
+});
+
+async function selectGame(game) {
   selectedGame = game;
   selectedImg.src = game.image || "";
   selectedName.textContent = game.name;
   addForm.classList.remove("hidden");
   searchResultsEl.classList.add("hidden");
+
+  // نرجّع اختيار النوع لوضعه الافتراضي (هدف سعري) في كل مرة نختار لعبة جديدة
+  alertTypeRadios.forEach(r => (r.checked = r.value === "target"));
+  setAlertTypeUI("target");
+
+  currentPriceValue.textContent = tr().fetchingPrice;
   targetPriceInput.focus();
+
+  try {
+    const priceInfo = await sendMessage("PREVIEW_PRICE", { appid: game.appid });
+    if (!priceInfo.ok) {
+      currentPriceValue.textContent = "—";
+    } else if (priceInfo.free) {
+      currentPriceValue.textContent = tr().freeLabel;
+    } else {
+      currentPriceValue.textContent = priceInfo.discountPercent
+        ? `${priceInfo.formatted} (-${priceInfo.discountPercent}%)`
+        : priceInfo.formatted;
+    }
+  } catch (e) {
+    currentPriceValue.textContent = `${tr().errorPriceFetch} (${e.message})`;
+    console.error("PREVIEW_PRICE failed:", e);
+  }
 }
 
 cancelAddBtn.addEventListener("click", () => {
@@ -370,13 +412,19 @@ cancelAddBtn.addEventListener("click", () => {
 
 confirmAddBtn.addEventListener("click", async () => {
   if (!selectedGame) return;
-  const targetPrice = parseFloat(targetPriceInput.value);
-  if (isNaN(targetPrice) || targetPrice < 0) {
-    alert(tr().invalidPriceAlert);
-    return;
+  const alertType = document.querySelector('input[name="alertType"]:checked').value;
+
+  let targetPrice = null;
+  if (alertType === "target") {
+    targetPrice = parseFloat(targetPriceInput.value);
+    if (isNaN(targetPrice) || targetPrice < 0) {
+      alert(tr().invalidPriceAlert);
+      return;
+    }
   }
+
   const games = await sendMessage("ADD_GAME", {
-    game: { appid: selectedGame.appid, name: selectedGame.name, image: selectedGame.image, targetPrice }
+    game: { appid: selectedGame.appid, name: selectedGame.name, image: selectedGame.image, alertType, targetPrice }
   });
   renderGames(games);
   addForm.classList.add("hidden");

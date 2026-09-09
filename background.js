@@ -52,9 +52,21 @@ async function searchGames(term, countryCode, tr) {
 // يجلب بيانات السعر الحالية للعبة appid واحدة
 async function fetchPrice(appid, countryCode) {
   const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&cc=${countryCode}&filters=price_overview,basic`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("فشل الاتصال بمتجر Steam");
-  const data = await res.json();
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (e) {
+    throw new Error(`network: ${e.message || e}`);
+  }
+  if (!res.ok) throw new Error(`http_${res.status}`);
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error("invalid_json_response");
+  }
+
   const entry = data[String(appid)];
   if (!entry || !entry.success) {
     return { ok: false, reason: "not_found" };
@@ -95,10 +107,13 @@ async function checkOneGame(game, settings, tr) {
       lastCheckedAt: Date.now()
     };
 
-    const reachedTarget =
-      !priceInfo.free &&
-      game.targetPrice != null &&
-      priceInfo.currentPrice <= game.targetPrice;
+    const alertType = game.alertType || "target"; // توافق مع الألعاب المضافة قبل هذه الميزة
+
+    const reachedTarget = !priceInfo.free && (
+      alertType === "sale"
+        ? (priceInfo.discountPercent || 0) > 0
+        : game.targetPrice != null && priceInfo.currentPrice <= game.targetPrice
+    );
 
     let alert = null;
 
@@ -189,7 +204,10 @@ function fireNotification(game, priceInfo, tr) {
     type: "basic",
     iconUrl: "icons/icon128.png",
     title: tr.notifTitle,
-    message: tr.notifMessage(game.name, priceInfo.formatted, `${game.targetPrice} ${game.currencyLabel || ""}`.trim()),
+    message:
+      game.alertType === "sale"
+        ? tr.notifMessageSale(game.name, priceInfo.formatted, priceInfo.discountPercent)
+        : tr.notifMessage(game.name, priceInfo.formatted, `${game.targetPrice} ${game.currencyLabel || ""}`.trim()),
     priority: 2
   });
 }
@@ -261,6 +279,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: true, data: results });
           break;
         }
+        case "PREVIEW_PRICE": {
+          const { settings } = await getState();
+          const priceInfo = await fetchPrice(msg.appid, settings.countryCode);
+          sendResponse({ ok: true, data: priceInfo });
+          break;
+        }
         case "ADD_GAME": {
           const { games } = await getState();
           const newGame = {
@@ -268,7 +292,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             appid: msg.game.appid,
             name: msg.game.name,
             image: msg.game.image || null,
-            targetPrice: msg.game.targetPrice,
+            alertType: msg.game.alertType === "sale" ? "sale" : "target",
+            targetPrice: msg.game.alertType === "sale" ? null : msg.game.targetPrice,
             currencyLabel: msg.game.currencyLabel || "",
             lastPrice: null,
             lastFormattedPrice: null,

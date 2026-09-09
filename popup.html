@@ -36,8 +36,22 @@
           <img id="selectedImg" src="" alt="" />
           <span id="selectedName"></span>
         </div>
+        <div class="current-price-row">
+          <span id="currentPriceLabelText">السعر الحالي:</span>
+          <span id="currentPriceValue">...</span>
+        </div>
+        <div class="alert-type-row">
+          <span id="alertTypeLabelText" class="alert-type-label">نبّهني:</span>
+          <label class="radio-option">
+            <input type="radio" name="alertType" value="target" checked />
+            <span id="alertTypeTargetText">لو نزل السعر إلى</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="alertType" value="sale" />
+            <span id="alertTypeSaleText">لو حصل عليها أي خصم</span>
+          </label>
+        </div>
         <div class="target-row">
-          <label id="targetPriceLabelText" for="targetPriceInput">نبّهني إذا نزل السعر إلى:</label>
           <input id="targetPriceInput" type="number" step="0.01" min="0" placeholder="مثال: 10.00" />
           <button id="confirmAddBtn">إضافة</button>
           <button id="cancelAddBtn" class="secondary">إلغاء</button>
