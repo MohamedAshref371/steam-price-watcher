@@ -7,7 +7,8 @@ const DEFAULT_SETTINGS = {
   intervalHours: 12,   // 1 أو 3 أو 6 أو 12 أو 24
   countryCode: "eg",   // كود الدولة المستخدم في أسعار Steam (يؤثر على العملة) — غيّره من إعدادات الإضافة
   language: "ar",       // ar أو en
-  repeatAlerts: false   // false = نبّه مرة واحدة فقط لكل سعر، true = نبّه في كل فحص طالما السعر تحت الهدف
+  repeatAlerts: false,  // false = نبّه مرة واحدة فقط لكل سعر، true = نبّه في كل فحص طالما السعر تحت الهدف
+  sortBy: "default"     // default | cheapest | closest | discount
 };
 
 // ---------- تخزين ----------
@@ -101,7 +102,11 @@ async function checkOneGame(game, settings, tr) {
 
     let alert = null;
 
-    if (settings.repeatAlerts) {
+    if (game.muted) {
+      // اللعبة مكتومة: نحدّث السعر بس بدون أي تنبيه، ونصفّر مؤشر التنبيه
+      // عشان لو اتشالت الكتمة بعدين، يقدر يبعث تنبيه جديد لو السعر لسا واصل للهدف
+      updated.notifiedAtPrice = null;
+    } else if (settings.repeatAlerts) {
       // ينبّه في كل فحص طالما السعر لسا تحت الهدف (بدون تجاهل تكرارات نفس السعر)
       if (reachedTarget) {
         updated.notifiedAtPrice = priceInfo.currentPrice;

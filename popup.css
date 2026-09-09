@@ -153,6 +153,18 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
   cursor: pointer;
 }
 
+.sort-row {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.sort-row select {
+  flex: 1;
+}
+
 .region-row {
   flex-basis: 100%;
   display: flex;
@@ -229,6 +241,25 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
   padding: 0 4px;
 }
 .edit-btn:hover { color: #66c0f4; }
+
+.mute-btn {
+  background: none;
+  border: none;
+  color: #8f98a0;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+}
+.mute-btn:hover { color: #e2a03f; }
+.mute-btn.is-muted { color: #e2a03f; }
+
+.muted-badge {
+  background: #4a3a1f;
+  color: #e2a03f;
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 11px;
+}
 
 .card-actions { display: flex; align-items: center; gap: 2px; }
 

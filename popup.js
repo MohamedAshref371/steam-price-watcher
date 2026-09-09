@@ -21,6 +21,8 @@ const repeatAlertsLabelText = document.getElementById("repeatAlertsLabelText");
 const regionLabelText = document.getElementById("regionLabelText");
 const regionSelect = document.getElementById("regionSelect");
 const regionCustomInput = document.getElementById("regionCustomInput");
+const sortLabelText = document.getElementById("sortLabelText");
+const sortSelect = document.getElementById("sortSelect");
 const gamesListEl = document.getElementById("gamesList");
 const emptyStateEl = document.getElementById("emptyState");
 
@@ -29,6 +31,7 @@ let currentLang = "ar";
 let currentGames = [];
 let currentLastChecked = null;
 let editingGameId = null;
+let currentSortBy = "default";
 
 function tr() {
   return t(currentLang);
@@ -82,7 +85,14 @@ function applyStaticTexts() {
   repeatAlertsLabelText.textContent = T.repeatAlertsLabel;
   regionLabelText.textContent = T.regionLabel;
   regionCustomInput.placeholder = T.regionCustomPlaceholder;
+  sortLabelText.textContent = T.sortLabel;
   emptyStateEl.textContent = T.emptyState;
+
+  const sortOptions = sortSelect.querySelectorAll("option");
+  sortOptions[0].textContent = T.sortDefault;
+  sortOptions[1].textContent = T.sortCheapest;
+  sortOptions[2].textContent = T.sortClosest;
+  sortOptions[3].textContent = T.sortDiscount;
 
   const intervalOptions = intervalSelect.querySelectorAll("option");
   intervalOptions[0].textContent = T.interval1;
@@ -90,6 +100,34 @@ function applyStaticTexts() {
   intervalOptions[2].textContent = T.interval6;
   intervalOptions[3].textContent = T.interval12;
   intervalOptions[4].textContent = T.interval24;
+}
+
+// ---------- ترتيب القائمة ----------
+
+function sortGames(games, sortBy) {
+  const arr = [...games];
+  switch (sortBy) {
+    case "cheapest":
+      arr.sort((a, b) => {
+        if (a.lastPrice == null) return 1;
+        if (b.lastPrice == null) return -1;
+        return a.lastPrice - b.lastPrice;
+      });
+      break;
+    case "closest":
+      arr.sort((a, b) => {
+        const gapA = a.lastPrice != null && a.targetPrice != null ? a.lastPrice - a.targetPrice : Infinity;
+        const gapB = b.lastPrice != null && b.targetPrice != null ? b.lastPrice - b.targetPrice : Infinity;
+        return gapA - gapB;
+      });
+      break;
+    case "discount":
+      arr.sort((a, b) => (b.lastDiscount || 0) - (a.lastDiscount || 0));
+      break;
+    default:
+      break; // ترتيب الإضافة كما هو
+  }
+  return arr;
 }
 
 // ---------- عرض قائمة الألعاب ----------
@@ -104,7 +142,9 @@ function renderGames(games) {
   }
   emptyStateEl.classList.add("hidden");
 
-  for (const game of games) {
+  const sortedGames = sortGames(games, currentSortBy);
+
+  for (const game of sortedGames) {
     const li = document.createElement("li");
     li.className = "game-card";
 
@@ -120,11 +160,13 @@ function renderGames(games) {
       : T.pendingCheck;
 
     const isEditing = editingGameId === game.id;
+    const isMuted = !!game.muted;
 
     li.innerHTML = `
       <div class="row1">
         <span class="game-name">${escapeHtml(game.name)}</span>
         <span class="card-actions">
+          <button class="mute-btn ${isMuted ? "is-muted" : ""}" title="${escapeHtml(isMuted ? T.unmuteTitle : T.muteTitle)}">${isMuted ? "🔕" : "🔔"}</button>
           <button class="edit-btn" title="${escapeHtml(T.editTitle)}">✎</button>
           <button class="remove-btn" title="${escapeHtml(T.removeTitle)}">✕</button>
         </span>
@@ -133,7 +175,7 @@ function renderGames(games) {
         <span class="game-price ${reached ? "" : "above-target"}">${escapeHtml(priceLabel)}</span>
         <span>
           ${game.lastDiscount ? `<span class="discount-badge">-${game.lastDiscount}%</span>` : ""}
-          ${reached ? `<span class="reached-badge">${escapeHtml(T.reachedBadge)}</span>` : ""}
+          ${isMuted ? `<span class="muted-badge">${escapeHtml(T.mutedBadge)}</span>` : reached ? `<span class="reached-badge">${escapeHtml(T.reachedBadge)}</span>` : ""}
         </span>
       </div>
       <div class="game-meta">
@@ -152,6 +194,11 @@ function renderGames(games) {
 
     li.querySelector(".remove-btn").addEventListener("click", async () => {
       const games = await sendMessage("REMOVE_GAME", { id: game.id });
+      renderGames(games);
+    });
+
+    li.querySelector(".mute-btn").addEventListener("click", async () => {
+      const games = await sendMessage("UPDATE_GAME", { id: game.id, patch: { muted: !isMuted } });
       renderGames(games);
     });
 
@@ -203,6 +250,8 @@ async function init() {
   langSelect.value = currentLang;
   intervalSelect.value = String(state.settings.intervalHours);
   repeatAlertsCheckbox.checked = !!state.settings.repeatAlerts;
+  currentSortBy = state.settings.sortBy || "default";
+  sortSelect.value = currentSortBy;
 
   const knownRegions = Array.from(regionSelect.options).map(o => o.value).filter(v => v !== "__custom__");
   const savedRegion = state.settings.countryCode || "us";
@@ -243,6 +292,12 @@ intervalSelect.addEventListener("change", async () => {
 
 repeatAlertsCheckbox.addEventListener("change", async () => {
   await sendMessage("UPDATE_SETTINGS", { patch: { repeatAlerts: repeatAlertsCheckbox.checked } });
+});
+
+sortSelect.addEventListener("change", async () => {
+  currentSortBy = sortSelect.value;
+  await sendMessage("UPDATE_SETTINGS", { patch: { sortBy: currentSortBy } });
+  renderGames(currentGames);
 });
 
 async function applyRegionChange(code) {
