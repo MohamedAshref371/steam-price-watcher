@@ -44,11 +44,11 @@
           <span id="alertTypeLabelText" class="alert-type-label">نبّهني:</span>
           <label class="radio-option">
             <input type="radio" name="alertType" value="target" checked />
-            <span id="alertTypeTargetText">إذا انخفض السعر إلى</span>
+            <span id="alertTypeTargetText">إذا نزل السعر إلى</span>
           </label>
           <label class="radio-option">
             <input type="radio" name="alertType" value="sale" />
-            <span id="alertTypeSaleText">إذا طُرِح عليها أي خصم</span>
+            <span id="alertTypeSaleText">إذا كان عليها أي خصم</span>
           </label>
         </div>
         <div class="target-row">
@@ -78,7 +78,7 @@
           <option value="ru">🇷🇺 Россия</option>
           <option value="__custom__">…</option>
         </select>
-        <input type="text" id="regionCustomInput" class="hidden" maxlength="2" placeholder="رمز آخر (مثال: jp)" />
+        <input type="text" id="regionCustomInput" class="hidden" maxlength="2" placeholder="كود آخر (مثال: jp)" />
       </div>
       <label id="intervalLabelText" for="intervalSelect">الفحص كل:</label>
       <select id="intervalSelect">
@@ -90,22 +90,22 @@
       </select>
       <div class="repeat-alerts-row">
         <input type="checkbox" id="repeatAlertsCheckbox" />
-        <label id="repeatAlertsLabelText" for="repeatAlertsCheckbox">نبّهني في كل فحص ما دام السعر أقل من الهدف</label>
+        <label id="repeatAlertsLabelText" for="repeatAlertsCheckbox">نبّهني في كل فحص طالما السعر أقل من الهدف</label>
       </div>
       <div class="sort-row">
-        <label id="sortLabelText" for="sortSelect">الترتيب حسب:</label>
+        <label id="sortLabelText" for="sortSelect">ترتيب حسب:</label>
         <select id="sortSelect">
           <option value="default">الافتراضي (وقت الإضافة)</option>
           <option value="cheapest">الأرخص أولاً</option>
-          <option value="closest">الأقرب إلى الهدف</option>
-          <option value="discount">المخفَّضة حالياً</option>
+          <option value="closest">الأقرب للهدف</option>
+          <option value="discount">عليها خصم الآن</option>
         </select>
       </div>
     </section>
 
     <section class="games-list">
       <ul id="gamesList"></ul>
-      <p id="emptyState" class="empty-state hidden">لا توجد ألعاب مُضافة بعد. ابحث وأضف أول لعبة!</p>
+      <p id="emptyState" class="empty-state hidden">لا توجد ألعاب مضافة بعد. ابحث وأضف أول لعبة!</p>
     </section>
   </div>
 
