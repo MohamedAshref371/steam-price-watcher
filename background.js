@@ -179,7 +179,7 @@ async function checkSingleGameById(gameId, { notify = true } = {}) {
 }
 
 function fireNotification(game, priceInfo, tr) {
-  const idSafe = `price-alert-${game.id}-${Date.now()}`;
+  const idSafe = `price-alert-${game.appid}-${Date.now()}`;
   chrome.notifications.create(idSafe, {
     type: "basic",
     iconUrl: "icons/icon128.png",
@@ -188,6 +188,16 @@ function fireNotification(game, priceInfo, tr) {
     priority: 2
   });
 }
+
+// عند الضغط على الإشعار، نفتح صفحة اللعبة في متجر Steam مباشرة
+chrome.notifications.onClicked.addListener(notificationId => {
+  const match = notificationId.match(/^price-alert-(\d+)-/);
+  if (match) {
+    const appid = match[1];
+    chrome.tabs.create({ url: `https://store.steampowered.com/app/${appid}` });
+    chrome.notifications.clear(notificationId);
+  }
+});
 
 // ---------- الجدولة (Alarms) ----------
 
