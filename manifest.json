@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "مراقب أسعار الألعاب (Steam)",
+  "name": "Steam Price Watcher",
   "version": "1.0.0",
-  "description": "أضف ألعابك المفضلة وراقب سعرها على متجر Steam، واستلم تنبيهاً عند نزول السعر عن الحد الذي تحدده.",
+  "description": "Track Steam game prices and get notified the moment they drop to your target price.",
 
   "icons": {
     "16": "icons/icon16.png",
