@@ -15,7 +15,8 @@
   "host_permissions": ["https://store.steampowered.com/*"],
 
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["translations.js", "background.js"]
   },
 
   "action": {

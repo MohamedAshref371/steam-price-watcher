@@ -1,6 +1,8 @@
 // background.js — service worker: handles scheduling, checking, and notifications
 
-importScripts("translations.js");
+if (typeof importScripts === "function") {
+  importScripts("translations.js");
+}
 
 const ALARM_NAME = "price-check-alarm";
 const DEFAULT_SETTINGS = {
