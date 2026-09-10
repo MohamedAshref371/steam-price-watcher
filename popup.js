@@ -19,6 +19,7 @@ const alertTypeRadios = document.querySelectorAll('input[name="alertType"]');
 const targetPriceInput = document.getElementById("targetPriceInput");
 const confirmAddBtn = document.getElementById("confirmAddBtn");
 const cancelAddBtn = document.getElementById("cancelAddBtn");
+const duplicateWarningText = document.getElementById("duplicateWarningText");
 const intervalLabelText = document.getElementById("intervalLabelText");
 const intervalSelect = document.getElementById("intervalSelect");
 const repeatAlertsCheckbox = document.getElementById("repeatAlertsCheckbox");
@@ -95,6 +96,7 @@ function applyStaticTexts() {
   regionCustomInput.placeholder = T.regionCustomPlaceholder;
   sortLabelText.textContent = T.sortLabel;
   emptyStateEl.textContent = T.emptyState;
+  duplicateWarningText.textContent = T.gameAlreadyAdded;
 
   const sortOptions = sortSelect.querySelectorAll("option");
   sortOptions[0].textContent = T.sortDefault;
@@ -174,6 +176,7 @@ function renderGames(games) {
       <div class="row1">
         <span class="game-name">${escapeHtml(game.name)}</span>
         <span class="card-actions">
+          <a class="link-btn" href="https://store.steampowered.com/app/${game.appid}" target="_blank" rel="noopener" title="${escapeHtml(T.linkTitle)}">🔗</a>
           <button class="mute-btn ${isMuted ? "is-muted" : ""}" title="${escapeHtml(isMuted ? T.unmuteTitle : T.muteTitle)}">${isMuted ? "🔕" : "🔔"}</button>
           ${game.alertType !== "sale" ? `<button class="edit-btn" title="${escapeHtml(T.editTitle)}">✎</button>` : ""}
           <button class="remove-btn" title="${escapeHtml(T.removeTitle)}">✕</button>
@@ -339,6 +342,10 @@ searchInput.addEventListener("keydown", e => {
 async function doSearch() {
   const term = searchInput.value.trim();
   if (!term) return;
+
+  // لو كان فيه نموذج إضافة لعبة مفتوح من عملية بحث سابقة، نقفله قبل ما نعرض نتائج جديدة
+  resetAddForm();
+
   const T = tr();
   searchResultsEl.innerHTML = `<p style='padding:6px;color:#8f98a0;'>${escapeHtml(T.searching)}</p>`;
   searchResultsEl.classList.remove("hidden");
@@ -367,6 +374,14 @@ function setAlertTypeUI(type) {
   targetPriceInput.required = !isSale;
 }
 
+// يغلق نموذج إضافة اللعبة الحالي ويعيد كل عناصره لوضعها الافتراضي
+function resetAddForm() {
+  selectedGame = null;
+  addForm.classList.add("hidden");
+  targetPriceInput.value = "";
+  duplicateWarningText.classList.add("hidden");
+}
+
 alertTypeRadios.forEach(radio => {
   radio.addEventListener("change", () => {
     setAlertTypeUI(radio.value);
@@ -383,6 +398,9 @@ async function selectGame(game) {
   // نرجّع اختيار النوع لوضعه الافتراضي (هدف سعري) في كل مرة نختار لعبة جديدة
   alertTypeRadios.forEach(r => (r.checked = r.value === "target"));
   setAlertTypeUI("target");
+
+  const alreadyAdded = currentGames.some(g => g.appid === game.appid);
+  duplicateWarningText.classList.toggle("hidden", !alreadyAdded);
 
   currentPriceValue.textContent = tr().fetchingPrice;
   targetPriceInput.focus();
@@ -405,13 +423,12 @@ async function selectGame(game) {
 }
 
 cancelAddBtn.addEventListener("click", () => {
-  selectedGame = null;
-  addForm.classList.add("hidden");
-  targetPriceInput.value = "";
+  resetAddForm();
 });
 
 confirmAddBtn.addEventListener("click", async () => {
   if (!selectedGame) return;
+
   const alertType = document.querySelector('input[name="alertType"]:checked').value;
 
   let targetPrice = null;
@@ -427,10 +444,8 @@ confirmAddBtn.addEventListener("click", async () => {
     game: { appid: selectedGame.appid, name: selectedGame.name, image: selectedGame.image, alertType, targetPrice }
   });
   renderGames(games);
-  addForm.classList.add("hidden");
-  targetPriceInput.value = "";
+  resetAddForm();
   searchInput.value = "";
-  selectedGame = null;
 
   // نعيد الفحص بعد لحظة قصيرة لعرض السعر الفعلي فور توفره
   setTimeout(async () => {

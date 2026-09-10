@@ -162,6 +162,12 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
 
 .target-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 
+.duplicate-warning {
+  color: #e2a03f;
+  font-size: 11px;
+  margin: 6px 0 0 0;
+}
+
 .settings {
   display: flex;
   align-items: center;
@@ -267,6 +273,16 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
   padding: 0 4px;
 }
 .remove-btn:hover { color: #e23f3f; }
+
+.link-btn {
+  color: #8f98a0;
+  text-decoration: none;
+  font-size: 13px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+}
+.link-btn:hover { color: #66c0f4; }
 
 .edit-btn {
   background: none;
