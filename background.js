@@ -11,6 +11,21 @@ const DEFAULT_SETTINGS = {
   sortBy: "default"     // default | cheapest | closest | discount
 };
 
+// يحاول تخمين الدولة واللغة المناسبة بناءً على لغة/إقليم المتصفح نفسه
+// (تقريب عملي بدون شبكة أو صلاحيات إضافية — يُستخدم فقط أول مرة تُثبَّت فيها الإضافة)
+function detectDefaultsFromLocale() {
+  const uiLang = chrome.i18n.getUILanguage() || ""; // مثال: "ar-EG" أو "en-US" أو "ar"
+  const [langPart, regionPart] = uiLang.toLowerCase().split("-");
+
+  // أي كود دولة صالح (حرفين) نستخدمه كما هو، حتى لو مش من الدول الجاهزة في القائمة —
+  // الواجهة أصلاً بتعرضه تلقائياً في خانة "دولة أخرى" (custom) لو مش موجود في القائمة الجاهزة
+  const isValidCode = regionPart && /^[a-z]{2}$/.test(regionPart);
+  const region = isValidCode ? regionPart : DEFAULT_SETTINGS.countryCode;
+  const language = langPart === "ar" ? "ar" : "en";
+
+  return { countryCode: region, language };
+}
+
 // ---------- تخزين ----------
 
 async function getState() {
@@ -251,8 +266,16 @@ chrome.alarms.onAlarm.addListener(alarm => {
 });
 
 // عند تثبيت/تحديث الإضافة
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async details => {
   const { settings } = await getState();
+
+  if (details.reason === "install") {
+    // أول تثبيت فعلي: نخمّن الدولة واللغة المناسبة من إعدادات المتصفح
+    const detected = detectDefaultsFromLocale();
+    settings.countryCode = detected.countryCode;
+    settings.language = detected.language;
+  }
+
   await saveSettings(settings); // يضمن حفظ القيم الافتراضية أول مرة
   await rescheduleAlarm();
 });
