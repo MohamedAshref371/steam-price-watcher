@@ -51,17 +51,49 @@ async function setLastChecked(ts) {
 
 // ---------- Steam API ----------
 
+async function mapWithConcurrencyLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const i = index++;
+      results[i] = await fn(items[i]);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 // Searches for a game by name, returns a list of {appid, name, image}
 async function searchGames(term, countryCode, tr) {
   const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(term)}&cc=${countryCode}&l=english`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(tr.searchError);
   const data = await res.json();
-  return (data.items || []).map(item => ({
+  const results = (data.items || []).map(item => ({
     appid: item.id,
     name: item.name,
     image: item.tiny_image
   }));
+
+  const flags = await mapWithConcurrencyLimit(results, 3, r => isAdultContent(r.appid, countryCode));
+  return results.filter((_, i) => !flags[i]);
+}
+
+async function isAdultContent(appid, countryCode) {
+  try {
+    const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&cc=${countryCode}&filters=content_descriptors`;
+    const res = await fetch(url);
+    if (!res.ok) return false;
+    const data = await res.json();
+    const entry = data[String(appid)];
+    const ids = entry?.data?.content_descriptors?.ids || [];
+    return ids.includes(3) || ids.includes(4);
+  } catch (e) {
+    return false;
+  }
 }
 
 // Fetches current price data for a single appid
