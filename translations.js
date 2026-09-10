@@ -1,4 +1,4 @@
-// translations.js — قاموس الترجمة المشترك (يُحمَّل في popup.js عبر <script> وفي background.js عبر importScripts)
+// translations.js — shared translation dictionary (loaded in popup.js via <script> and in background.js via importScripts)
 
 const TRANSLATIONS = {
   ar: {

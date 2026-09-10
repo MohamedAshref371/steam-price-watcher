@@ -1,4 +1,4 @@
-// popup.js — واجهة الإضافة
+// popup.js — extension popup UI
 
 const appTitleEl = document.getElementById("appTitle");
 const langSelect = document.getElementById("langSelect");
@@ -72,7 +72,7 @@ function formatRelativeTime(ts) {
   return T.daysAgo(days);
 }
 
-// ---------- تطبيق النصوص الثابتة حسب اللغة ----------
+// ---------- Applying UI text per language ----------
 
 function applyStaticTexts() {
   const T = tr();
@@ -112,7 +112,7 @@ function applyStaticTexts() {
   intervalOptions[4].textContent = T.interval24;
 }
 
-// ---------- ترتيب القائمة ----------
+// ---------- Sorting the list ----------
 
 function sortGames(games, sortBy) {
   const arr = [...games];
@@ -135,12 +135,12 @@ function sortGames(games, sortBy) {
       arr.sort((a, b) => (b.lastDiscount || 0) - (a.lastDiscount || 0));
       break;
     default:
-      break; // ترتيب الإضافة كما هو
+      break; // keep insertion order
   }
   return arr;
 }
 
-// ---------- عرض قائمة الألعاب ----------
+// ---------- Rendering the games list ----------
 
 function renderGames(games) {
   currentGames = games;
@@ -196,7 +196,7 @@ function renderGames(games) {
       ${game.lastError ? `<span class="error-text">${escapeHtml(game.lastError)}</span>` : ""}
       ${isEditing && game.alertType !== "sale" ? `
         <div class="edit-target-row">
-          <input type="number" step="0.01" min="0" class="edit-target-input" value="${game.targetPrice != null ? game.targetPrice : ""}" />
+          <input type="number" step="0.01" min="0" lang="en" class="edit-target-input" value="${game.targetPrice != null ? game.targetPrice : ""}" />
           <button class="save-target-btn">${escapeHtml(T.saveBtn)}</button>
           <button class="cancel-edit-btn secondary">${escapeHtml(T.cancelBtn)}</button>
         </div>
@@ -251,10 +251,10 @@ function refreshStatus(lastChecked) {
   statusText.textContent = `${tr().lastCheckedPrefix} ${formatRelativeTime(lastChecked)}`;
 }
 
-// ---------- تهيئة أولية ----------
+// ---------- Initial setup ----------
 
-// نافذة الإضافة تعرض فقط آخر حالة محفوظة — الفحص التلقائي عند تجاوز المدة
-// يتم عند إقلاع المتصفح نفسه (في background.js)، وليس عند فتح هذه النافذة.
+// The popup only shows the last saved state — the automatic check when the
+// interval has elapsed happens in background.js on browser startup, not here.
 async function init() {
   const state = await sendMessage("GET_STATE");
   currentLang = state.settings.language || "ar";
@@ -280,7 +280,7 @@ async function init() {
   refreshStatus(state.lastChecked);
 }
 
-// ---------- أحداث ----------
+// ---------- Events ----------
 
 langSelect.addEventListener("change", async () => {
   currentLang = langSelect.value;
@@ -343,7 +343,7 @@ async function doSearch() {
   const term = searchInput.value.trim();
   if (!term) return;
 
-  // لو كان فيه نموذج إضافة لعبة مفتوح من عملية بحث سابقة، نقفله قبل ما نعرض نتائج جديدة
+  // If an add-game form is open from a previous search, close it before showing new results
   resetAddForm();
 
   const T = tr();
@@ -374,7 +374,7 @@ function setAlertTypeUI(type) {
   targetPriceInput.required = !isSale;
 }
 
-// يغلق نموذج إضافة اللعبة الحالي ويعيد كل عناصره لوضعها الافتراضي
+// Closes the current add-game form and resets all its fields to their defaults
 function resetAddForm() {
   selectedGame = null;
   addForm.classList.add("hidden");
@@ -395,7 +395,7 @@ async function selectGame(game) {
   addForm.classList.remove("hidden");
   searchResultsEl.classList.add("hidden");
 
-  // نرجّع اختيار النوع لوضعه الافتراضي (هدف سعري) في كل مرة نختار لعبة جديدة
+  // Reset the alert type back to its default (price target) each time a new game is selected
   alertTypeRadios.forEach(r => (r.checked = r.value === "target"));
   setAlertTypeUI("target");
 
@@ -447,7 +447,7 @@ confirmAddBtn.addEventListener("click", async () => {
   resetAddForm();
   searchInput.value = "";
 
-  // نعيد الفحص بعد لحظة قصيرة لعرض السعر الفعلي فور توفره
+  // Re-check shortly after adding, to show the actual price once available
   setTimeout(async () => {
     const state = await sendMessage("GET_STATE");
     renderGames(state.games);

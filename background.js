@@ -1,24 +1,24 @@
-// background.js — service worker: يدير الجدولة، الفحص، والتنبيهات
+// background.js — service worker: handles scheduling, checking, and notifications
 
 importScripts("translations.js");
 
 const ALARM_NAME = "price-check-alarm";
 const DEFAULT_SETTINGS = {
-  intervalHours: 12,   // 1 أو 3 أو 6 أو 12 أو 24
-  countryCode: "eg",   // كود الدولة المستخدم في أسعار Steam (يؤثر على العملة) — غيّره من إعدادات الإضافة
-  language: "ar",       // ar أو en
-  repeatAlerts: false,  // false = نبّه مرة واحدة فقط لكل سعر، true = نبّه في كل فحص طالما السعر تحت الهدف
-  sortBy: "default"     // default | cheapest | closest | discount
+  intervalHours: 12,   // 1, 3, 6, 12, or 24
+  countryCode: "eg",   // Steam store region (affects currency/pricing) — changeable from the popup
+  language: "ar",      // ar or en
+  repeatAlerts: false, // false = notify once per price, true = notify every check while below target
+  sortBy: "default"    // default | cheapest | closest | discount
 };
 
-// يحاول تخمين الدولة واللغة المناسبة بناءً على لغة/إقليم المتصفح نفسه
-// (تقريب عملي بدون شبكة أو صلاحيات إضافية — يُستخدم فقط أول مرة تُثبَّت فيها الإضافة)
+// Guesses a reasonable default region and language from the browser's own locale
+// (best-effort, no network/permissions needed — only used on first install)
 function detectDefaultsFromLocale() {
-  const uiLang = chrome.i18n.getUILanguage() || ""; // مثال: "ar-EG" أو "en-US" أو "ar"
+  const uiLang = chrome.i18n.getUILanguage() || ""; // e.g. "ar-EG", "en-US", "ar"
   const [langPart, regionPart] = uiLang.toLowerCase().split("-");
 
-  // أي كود دولة صالح (حرفين) نستخدمه كما هو، حتى لو مش من الدول الجاهزة في القائمة —
-  // الواجهة أصلاً بتعرضه تلقائياً في خانة "دولة أخرى" (custom) لو مش موجود في القائمة الجاهزة
+  // Any valid 2-letter region code is used as-is, even if it's not in the popup's
+  // preset list — the UI already falls back to its "custom region" field for that case
   const isValidCode = regionPart && /^[a-z]{2}$/.test(regionPart);
   const region = isValidCode ? regionPart : DEFAULT_SETTINGS.countryCode;
   const language = langPart === "ar" ? "ar" : "en";
@@ -26,7 +26,7 @@ function detectDefaultsFromLocale() {
   return { countryCode: region, language };
 }
 
-// ---------- تخزين ----------
+// ---------- Storage ----------
 
 async function getState() {
   const data = await chrome.storage.local.get(["games", "settings", "lastChecked"]);
@@ -51,7 +51,7 @@ async function setLastChecked(ts) {
 
 // ---------- Steam API ----------
 
-// يبحث عن لعبة بالاسم ويرجع قائمة نتائج {appid, name, image}
+// Searches for a game by name, returns a list of {appid, name, image}
 async function searchGames(term, countryCode, tr) {
   const url = `https://store.steampowered.com/api/storesearch/?term=${encodeURIComponent(term)}&cc=${countryCode}&l=english`;
   const res = await fetch(url);
@@ -64,7 +64,7 @@ async function searchGames(term, countryCode, tr) {
   }));
 }
 
-// يجلب بيانات السعر الحالية للعبة appid واحدة
+// Fetches current price data for a single appid
 async function fetchPrice(appid, countryCode) {
   const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&cc=${countryCode}&filters=price_overview,basic`;
   let res;
@@ -88,7 +88,7 @@ async function fetchPrice(appid, countryCode) {
   }
   const overview = entry.data && entry.data.price_overview;
   if (!overview) {
-    // قد تكون اللعبة مجانية أو غير متوفرة في هذه المنطقة
+    // Game may be free, or unavailable in this region
     return { ok: true, free: true, currentPrice: 0, currency: null, discountPercent: 0, formatted: null };
   }
   return {
@@ -102,9 +102,9 @@ async function fetchPrice(appid, countryCode) {
   };
 }
 
-// ---------- منطق الفحص ----------
+// ---------- Price-check logic ----------
 
-// يفحص لعبة واحدة ويرجّع النسخة المحدّثة منها (بدون حفظ أو إشعار — تُترك للمستدعي)
+// Checks a single game and returns its updated version (does not save or notify — left to the caller)
 async function checkOneGame(game, settings, tr) {
   try {
     const priceInfo = await fetchPrice(game.appid, settings.countryCode);
@@ -122,7 +122,7 @@ async function checkOneGame(game, settings, tr) {
       lastCheckedAt: Date.now()
     };
 
-    const alertType = game.alertType || "target"; // توافق مع الألعاب المضافة قبل هذه الميزة
+    const alertType = game.alertType || "target"; // backwards compatibility with games added before this feature
 
     const reachedTarget = !priceInfo.free && (
       alertType === "sale"
@@ -133,11 +133,11 @@ async function checkOneGame(game, settings, tr) {
     let alert = null;
 
     if (game.muted) {
-      // اللعبة مكتومة: نحدّث السعر بس بدون أي تنبيه، ونصفّر مؤشر التنبيه
-      // عشان لو اتشالت الكتمة بعدين، يقدر يبعث تنبيه جديد لو السعر لسا واصل للهدف
+      // Muted: update the price but never alert, and reset the notified marker
+      // so that unmuting later can trigger a fresh alert if the target is still met
       updated.notifiedAtPrice = null;
     } else if (settings.repeatAlerts) {
-      // ينبّه في كل فحص طالما السعر لسا تحت الهدف (بدون تجاهل تكرارات نفس السعر)
+      // Alert on every check while the price stays at/below target (no dedup)
       if (reachedTarget) {
         updated.notifiedAtPrice = priceInfo.currentPrice;
         alert = { game: updated, priceInfo };
@@ -145,7 +145,7 @@ async function checkOneGame(game, settings, tr) {
         updated.notifiedAtPrice = null;
       }
     } else {
-      // السلوك الافتراضي: ينبّه مرة واحدة فقط لنفس السعر بالضبط
+      // Default behavior: alert once per distinct price
       const alreadyNotifiedForThisPrice =
         game.notifiedAtPrice != null && game.notifiedAtPrice === priceInfo.currentPrice;
 
@@ -163,7 +163,7 @@ async function checkOneGame(game, settings, tr) {
   }
 }
 
-// يفحص كل الألعاب المحفوظة (الفحص الدوري/اليدوي)
+// Checks every saved game (periodic/manual check)
 async function checkAllGames({ notify = true } = {}) {
   const { games, settings } = await getState();
   const tr = t(settings.language);
@@ -194,8 +194,8 @@ async function checkAllGames({ notify = true } = {}) {
   return { games: updatedGames, alerts };
 }
 
-// يفحص لعبة واحدة فقط بالمعرّف (id) ويحفظ نتيجتها ضمن القائمة الحالية —
-// يُستخدم مباشرة بعد إضافة لعبة جديدة، دون إعادة فحص بقية الألعاب
+// Checks a single game by id and saves just that result —
+// used right after adding a new game, without re-checking the rest
 async function checkSingleGameById(gameId, { notify = true } = {}) {
   const { games, settings } = await getState();
   const tr = t(settings.language);
@@ -227,7 +227,7 @@ function fireNotification(game, priceInfo, tr) {
   });
 }
 
-// عند الضغط على الإشعار، نفتح صفحة اللعبة في متجر Steam مباشرة
+// Clicking the notification opens the game's Steam store page directly
 chrome.notifications.onClicked.addListener(notificationId => {
   const match = notificationId.match(/^price-alert-(\d+)-/);
   if (match) {
@@ -237,7 +237,7 @@ chrome.notifications.onClicked.addListener(notificationId => {
   }
 });
 
-// ---------- الجدولة (Alarms) ----------
+// ---------- Scheduling (Alarms) ----------
 
 async function rescheduleAlarm() {
   const { settings, lastChecked } = await getState();
@@ -245,12 +245,12 @@ async function rescheduleAlarm() {
 
   const periodMinutes = Math.max(1, settings.intervalHours * 60);
 
-  // نحسب الوقت المتبقي فعلياً منذ آخر فحص حقيقي، بدل ما نبدأ عدّ جديد من الصفر
+  // Compute the actual time left since the last real check, instead of restarting the countdown
   let delayMinutes = periodMinutes;
   if (lastChecked) {
     const elapsedMinutes = (Date.now() - lastChecked) / 60000;
     const remaining = periodMinutes - elapsedMinutes;
-    delayMinutes = remaining > 0 ? remaining : 0.1; // لو المدة عدّت أصلاً، فحص شبه فوري
+    delayMinutes = remaining > 0 ? remaining : 0.1; // already overdue: check almost immediately
   }
 
   chrome.alarms.create(ALARM_NAME, {
@@ -265,27 +265,26 @@ chrome.alarms.onAlarm.addListener(alarm => {
   }
 });
 
-// عند تثبيت/تحديث الإضافة
 chrome.runtime.onInstalled.addListener(async details => {
   const { settings } = await getState();
 
   if (details.reason === "install") {
-    // أول تثبيت فعلي: نخمّن الدولة واللغة المناسبة من إعدادات المتصفح
+    // Fresh install: guess a sensible region/language from the browser's settings
     const detected = detectDefaultsFromLocale();
     settings.countryCode = detected.countryCode;
     settings.language = detected.language;
   }
 
-  await saveSettings(settings); // يضمن حفظ القيم الافتراضية أول مرة
+  await saveSettings(settings);
   await rescheduleAlarm();
 });
 
-// عند فتح/إقلاع المتصفح نفسه (وليس عند فتح نافذة الإضافة)
+// Fires when the browser itself launches — not when the popup is opened
 chrome.runtime.onStartup.addListener(async () => {
   await rescheduleAlarm();
 });
 
-// ---------- الرسائل من الـ popup ----------
+// ---------- Messages from the popup ----------
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
@@ -328,7 +327,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           const updatedGames = [...games, newGame];
           await saveGames(updatedGames);
           sendResponse({ ok: true, data: updatedGames });
-          // نفحص هذه اللعبة فقط فوراً حتى تظهر بياناتها — بدون إعادة فحص بقية الألعاب
+          // Only check this new game right away — no need to re-check the rest
           checkSingleGameById(newGame.id, { notify: true });
           break;
         }
@@ -358,7 +357,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case "FORCE_CHECK": {
           const result = await checkAllGames({ notify: true });
-          await rescheduleAlarm(); // نعيد ضبط الموعد القادم بناءً على وقت هذا الفحص اليدوي
+          await rescheduleAlarm(); // realign the next scheduled check to this manual one
           sendResponse({ ok: true, data: result });
           break;
         }
@@ -369,5 +368,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: false, error: e.message || String(e) });
     }
   })();
-  return true; // نبقي القناة مفتوحة للرد غير المتزامن
+  return true; // keep the message channel open for the async response
 });
