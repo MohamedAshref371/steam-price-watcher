@@ -196,7 +196,7 @@ function renderGames(games) {
       ${game.lastError ? `<span class="error-text">${escapeHtml(game.lastError)}</span>` : ""}
       ${isEditing && game.alertType !== "sale" ? `
         <div class="edit-target-row">
-          <input type="number" step="0.01" min="0" lang="en" class="edit-target-input" value="${game.targetPrice != null ? game.targetPrice : ""}" />
+          <input type="number" step="0.25" min="0" lang="en" class="edit-target-input" value="${game.targetPrice != null ? game.targetPrice : ""}" />
           <button class="save-target-btn">${escapeHtml(T.saveBtn)}</button>
           <button class="cancel-edit-btn secondary">${escapeHtml(T.cancelBtn)}</button>
         </div>
