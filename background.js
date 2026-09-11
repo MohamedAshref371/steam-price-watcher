@@ -80,8 +80,9 @@ async function searchGames(term, countryCode, tr) {
     image: item.tiny_image
   }));
 
-  const flags = await mapWithConcurrencyLimit(results, 3, r => isAdultContent(r.appid, countryCode));
-  return results.filter((_, i) => !flags[i]);
+  const candidates = results.slice(0, 12);
+  const flags = await mapWithConcurrencyLimit(candidates, 3, r => isAdultContent(r.appid, countryCode));
+  return candidates.filter((_, i) => !flags[i]);
 }
 
 async function isAdultContent(appid, countryCode) {
