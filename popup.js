@@ -519,6 +519,7 @@ async function selectGame(game) {
       currentPriceValue.textContent = priceInfo.discountPercent
         ? `${priceInfo.formatted} (-${priceInfo.discountPercent}%)`
         : priceInfo.formatted;
+      if (selectedGame === game) selectedGame.currency = priceInfo.currency || "";
     }
   } catch (e) {
     currentPriceValue.textContent = `${tr().errorPriceFetch} (${e.message})`;
@@ -545,7 +546,7 @@ confirmAddBtn.addEventListener("click", async () => {
   }
 
   const games = await sendMessage("ADD_GAME", {
-    game: { appid: selectedGame.appid, name: selectedGame.name, image: selectedGame.image, alertType, targetPrice }
+    game: { appid: selectedGame.appid, name: selectedGame.name, image: selectedGame.image, alertType, targetPrice, currencyLabel: selectedGame.currency || "" }
   });
   renderGames(games);
   resetAddForm();
