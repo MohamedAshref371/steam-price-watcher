@@ -60,7 +60,9 @@ const TRANSLATIONS = {
     errorPriceFetch: "تعذر جلب السعر",
     errorGeneric: "حدث خطأ أثناء الفحص",
     notifTitle: "نزل سعر لعبتك! 🎮",
-    notifMessage: (name, price, target) => `${name}: صار السعر ${price} (كان هدفك ${target})`
+    notifMessage: (name, price, target) => `${name}: صار السعر ${price} (كان هدفك ${target})`,
+    unknownCommand: "أمر غير معروف",
+    unknownError: "حدث خطأ غير معروف"
   },
   en: {
     dir: "ltr",
@@ -121,7 +123,9 @@ const TRANSLATIONS = {
     errorPriceFetch: "Couldn't fetch price",
     errorGeneric: "Error while checking",
     notifTitle: "Your game's price dropped! 🎮",
-    notifMessage: (name, price, target) => `${name}: price is now ${price} (your target was ${target})`
+    notifMessage: (name, price, target) => `${name}: price is now ${price} (your target was ${target})`,
+    unknownCommand: "Unknown command",
+    unknownError: "Unknown error"
   }
 };
 

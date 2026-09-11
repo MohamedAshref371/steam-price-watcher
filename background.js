@@ -396,7 +396,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
         default:
-          sendResponse({ ok: false, error: "أمر غير معروف" });
+          sendResponse({ ok: false, tr.unknownCommand });
       }
     } catch (e) {
       sendResponse({ ok: false, error: e.message || String(e) });

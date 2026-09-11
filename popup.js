@@ -51,7 +51,7 @@ function sendMessage(type, payload = {}) {
         return;
       }
       if (!response || !response.ok) {
-        reject(new Error((response && response.error) || "Unknown error"));
+        reject(new Error((response && response.error) || tr().unknownError));
         return;
       }
       resolve(response.data);
