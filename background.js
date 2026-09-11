@@ -324,86 +324,77 @@ chrome.runtime.onStartup.addListener(async () => {
 // ---------- Messages from the popup ----------
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  (async () => {
-    try {
-      const { settings } = await getState();
-      const tr = t(settings.language);
-      switch (msg.type) {
-        case "GET_STATE": {
-          sendResponse({ ok: true, data: await getState() });
-          break;
-        }
-        case "SEARCH_GAME": {
-          const results = await searchGames(msg.term, settings.countryCode, tr);
-          sendResponse({ ok: true, data: results });
-          break;
-        }
-        case "PREVIEW_PRICE": {
-          const { settings } = await getState();
-          const priceInfo = await fetchPrice(msg.appid, settings.countryCode);
-          sendResponse({ ok: true, data: priceInfo });
-          break;
-        }
-        case "ADD_GAME": {
-          const { games } = await getState();
-          const newGame = {
-            id: crypto.randomUUID(),
-            appid: msg.game.appid,
-            name: msg.game.name,
-            image: msg.game.image || null,
-            alertType: msg.game.alertType === "sale" ? "sale" : "target",
-            targetPrice: msg.game.alertType === "sale" ? null : msg.game.targetPrice,
-            currencyLabel: msg.game.currencyLabel || "",
-            lastPrice: null,
-            lastFormattedPrice: null,
-            lastDiscount: null,
-            lastCheckedAt: null,
-            lastError: null,
-            notifiedAtPrice: null
-          };
-          const updatedGames = [...games, newGame];
-          await saveGames(updatedGames);
-          sendResponse({ ok: true, data: updatedGames });
-          // Only check this new game right away — no need to re-check the rest
-          checkSingleGameById(newGame.id, { notify: true });
-          break;
-        }
-        case "REMOVE_GAME": {
-          const { games } = await getState();
-          const updatedGames = games.filter(g => g.id !== msg.id);
-          await saveGames(updatedGames);
-          sendResponse({ ok: true, data: updatedGames });
-          break;
-        }
-        case "UPDATE_GAME": {
-          const { games } = await getState();
-          const updatedGames = games.map(g =>
-            g.id === msg.id ? { ...g, ...msg.patch, notifiedAtPrice: null } : g
-          );
-          await saveGames(updatedGames);
-          sendResponse({ ok: true, data: updatedGames });
-          break;
-        }
-        case "UPDATE_SETTINGS": {
-          const { settings } = await getState();
-          const updatedSettings = { ...settings, ...msg.patch };
-          await saveSettings(updatedSettings);
-          await rescheduleAlarm();
-          sendResponse({ ok: true, data: updatedSettings });
-          break;
-        }
-        case "FORCE_CHECK": {
-          const result = await checkAllGames({ notify: true });
-          await rescheduleAlarm(); // realign the next scheduled check to this manual one
-          sendResponse({ ok: true, data: result });
-          break;
-        }
-        default:
-          sendResponse({ ok: false, error: tr.unknownCommand });
-      }
-    } catch (e) {
-      sendResponse({ ok: false, error: e.message || String(e) });
-    }
-  })();
+  handleMessage(msg).then(sendResponse);
   return true; // keep the message channel open for the async response
 });
+
+async function handleMessage(msg) {
+  try {
+    const state = await getState();
+    const { settings, games } = state;
+    const tr = t(settings.language);
+
+    switch (msg.type) {
+      case "GET_STATE": {
+        return { ok: true, data: state };
+      }
+      case "SEARCH_GAME": {
+        const results = await searchGames(msg.term, settings.countryCode, tr);
+        return { ok: true, data: results };
+      }
+      case "PREVIEW_PRICE": {
+        const priceInfo = await fetchPrice(msg.appid, settings.countryCode);
+        return { ok: true, data: priceInfo };
+      }
+      case "ADD_GAME": {
+        const newGame = {
+          id: crypto.randomUUID(),
+          appid: msg.game.appid,
+          name: msg.game.name,
+          image: msg.game.image || null,
+          alertType: msg.game.alertType === "sale" ? "sale" : "target",
+          targetPrice: msg.game.alertType === "sale" ? null : msg.game.targetPrice,
+          currencyLabel: msg.game.currencyLabel || "",
+          lastPrice: null,
+          lastFormattedPrice: null,
+          lastDiscount: null,
+          lastCheckedAt: null,
+          lastError: null,
+          notifiedAtPrice: null
+        };
+        const updatedGames = [...games, newGame];
+        await saveGames(updatedGames);
+        // Only check this new game right away — no need to re-check the rest
+        checkSingleGameById(newGame.id, { notify: true });
+        return { ok: true, data: updatedGames };
+      }
+      case "REMOVE_GAME": {
+        const updatedGames = games.filter(g => g.id !== msg.id);
+        await saveGames(updatedGames);
+        return { ok: true, data: updatedGames };
+      }
+      case "UPDATE_GAME": {
+        const updatedGames = games.map(g =>
+          g.id === msg.id ? { ...g, ...msg.patch, notifiedAtPrice: null } : g
+        );
+        await saveGames(updatedGames);
+        return { ok: true, data: updatedGames };
+      }
+      case "UPDATE_SETTINGS": {
+        const updatedSettings = { ...settings, ...msg.patch };
+        await saveSettings(updatedSettings);
+        await rescheduleAlarm();
+        return { ok: true, data: updatedSettings };
+      }
+      case "FORCE_CHECK": {
+        const result = await checkAllGames({ notify: true });
+        await rescheduleAlarm(); // realign the next scheduled check to this manual one
+        return { ok: true, data: result };
+      }
+      default:
+        return { ok: false, error: tr.unknownCommand };
+    }
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
+};
