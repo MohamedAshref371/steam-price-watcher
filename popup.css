@@ -109,6 +109,15 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
   border-top: 1px solid #2a475e;
 }
 
+.search-status {
+  padding: 6px;
+  color: #8f98a0;
+  margin: 0;
+}
+.search-status-error {
+  color: #e23f3f;
+}
+
 .search-result-item {
   display: flex;
   align-items: center;

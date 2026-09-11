@@ -142,10 +142,182 @@ function sortGames(games, sortBy) {
 
 // ---------- Rendering the games list ----------
 
+// Builds a single game card element via DOM APIs (no innerHTML, so nothing needs manual escaping)
+function buildGameCard(game, T) {
+  const li = document.createElement("li");
+  li.className = "game-card";
+
+  const reached =
+    game.lastPrice != null &&
+    game.targetPrice != null &&
+    game.lastPrice <= game.targetPrice;
+
+  const priceLabel = game.lastError
+    ? "—"
+    : game.lastFormattedPrice != null
+    ? game.lastFormattedPrice
+    : T.pendingCheck;
+
+  const isEditing = editingGameId === game.id;
+  const isMuted = !!game.muted;
+
+  // Row 1: name + action buttons
+  const row1 = document.createElement("div");
+  row1.className = "row1";
+
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "game-name";
+  nameSpan.textContent = game.name;
+  row1.appendChild(nameSpan);
+
+  const actions = document.createElement("span");
+  actions.className = "card-actions";
+
+  const linkBtn = document.createElement("a");
+  linkBtn.className = "link-btn";
+  linkBtn.href = `https://store.steampowered.com/app/${game.appid}`;
+  linkBtn.target = "_blank";
+  linkBtn.rel = "noopener";
+  linkBtn.title = T.linkTitle;
+  linkBtn.textContent = "🔗";
+  actions.appendChild(linkBtn);
+
+  const muteBtn = document.createElement("button");
+  muteBtn.className = "mute-btn" + (isMuted ? " is-muted" : "");
+  muteBtn.title = isMuted ? T.unmuteTitle : T.muteTitle;
+  muteBtn.textContent = isMuted ? "🔕" : "🔔";
+  muteBtn.addEventListener("click", async () => {
+    const games = await sendMessage("UPDATE_GAME", { id: game.id, patch: { muted: !isMuted } });
+    renderGames(games);
+  });
+  actions.appendChild(muteBtn);
+
+  if (game.alertType !== "sale") {
+    const editBtn = document.createElement("button");
+    editBtn.className = "edit-btn";
+    editBtn.title = T.editTitle;
+    editBtn.textContent = "✎";
+    editBtn.addEventListener("click", () => {
+      editingGameId = isEditing ? null : game.id;
+      renderGames(currentGames);
+    });
+    actions.appendChild(editBtn);
+  }
+
+  const removeBtn = document.createElement("button");
+  removeBtn.className = "remove-btn";
+  removeBtn.title = T.removeTitle;
+  removeBtn.textContent = "✕";
+  removeBtn.addEventListener("click", async () => {
+    const games = await sendMessage("REMOVE_GAME", { id: game.id });
+    renderGames(games);
+  });
+  actions.appendChild(removeBtn);
+
+  row1.appendChild(actions);
+  li.appendChild(row1);
+
+  // Row 2: price + badges
+  const row2 = document.createElement("div");
+  row2.className = "row1";
+
+  const priceSpan = document.createElement("span");
+  priceSpan.className = "game-price" + (reached ? "" : " above-target");
+  priceSpan.textContent = priceLabel;
+  row2.appendChild(priceSpan);
+
+  const badges = document.createElement("span");
+  if (game.lastDiscount) {
+    const discountBadge = document.createElement("span");
+    discountBadge.className = "discount-badge";
+    discountBadge.textContent = `-${game.lastDiscount}%`;
+    badges.appendChild(discountBadge);
+  }
+  if (isMuted) {
+    const mutedBadge = document.createElement("span");
+    mutedBadge.className = "muted-badge";
+    mutedBadge.textContent = T.mutedBadge;
+    badges.appendChild(mutedBadge);
+  } else if (reached) {
+    const reachedBadge = document.createElement("span");
+    reachedBadge.className = "reached-badge";
+    reachedBadge.textContent = T.reachedBadge;
+    badges.appendChild(reachedBadge);
+  }
+  row2.appendChild(badges);
+  li.appendChild(row2);
+
+  // Meta row: target/alert type + last checked
+  const meta = document.createElement("div");
+  meta.className = "game-meta";
+
+  const targetMetaSpan = document.createElement("span");
+  targetMetaSpan.textContent =
+    game.alertType === "sale"
+      ? T.targetMetaSale
+      : `${T.targetMetaLabel} ${game.targetPrice != null ? game.targetPrice : "—"}`;
+  meta.appendChild(targetMetaSpan);
+
+  const lastCheckedSpan = document.createElement("span");
+  lastCheckedSpan.textContent = `${T.lastCheckedPrefix} ${formatRelativeTime(game.lastCheckedAt)}`;
+  meta.appendChild(lastCheckedSpan);
+
+  li.appendChild(meta);
+
+  if (game.lastError) {
+    const errorSpan = document.createElement("span");
+    errorSpan.className = "error-text";
+    errorSpan.textContent = game.lastError;
+    li.appendChild(errorSpan);
+  }
+
+  if (isEditing && game.alertType !== "sale") {
+    const editRow = document.createElement("div");
+    editRow.className = "edit-target-row";
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = "0.25";
+    input.min = "0";
+    input.lang = "en";
+    input.className = "edit-target-input";
+    input.value = game.targetPrice != null ? game.targetPrice : "";
+    editRow.appendChild(input);
+
+    const saveBtn = document.createElement("button");
+    saveBtn.className = "save-target-btn";
+    saveBtn.textContent = T.saveBtn;
+    saveBtn.addEventListener("click", async () => {
+      const newTarget = parseFloat(input.value);
+      if (isNaN(newTarget) || newTarget < 0) {
+        alert(tr().invalidPriceAlert);
+        return;
+      }
+      const games = await sendMessage("UPDATE_GAME", { id: game.id, patch: { targetPrice: newTarget } });
+      editingGameId = null;
+      renderGames(games);
+    });
+    editRow.appendChild(saveBtn);
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "cancel-edit-btn secondary";
+    cancelBtn.textContent = T.cancelBtn;
+    cancelBtn.addEventListener("click", () => {
+      editingGameId = null;
+      renderGames(currentGames);
+    });
+    editRow.appendChild(cancelBtn);
+
+    li.appendChild(editRow);
+  }
+
+  return li;
+}
+
 function renderGames(games) {
   currentGames = games;
   const T = tr();
-  gamesListEl.innerHTML = "";
+  gamesListEl.replaceChildren();
   if (!games.length) {
     emptyStateEl.classList.remove("hidden");
     return;
@@ -153,97 +325,9 @@ function renderGames(games) {
   emptyStateEl.classList.add("hidden");
 
   const sortedGames = sortGames(games, currentSortBy);
-
   for (const game of sortedGames) {
-    const li = document.createElement("li");
-    li.className = "game-card";
-
-    const reached =
-      game.lastPrice != null &&
-      game.targetPrice != null &&
-      game.lastPrice <= game.targetPrice;
-
-    const priceLabel = game.lastError
-      ? "—"
-      : game.lastFormattedPrice != null
-      ? game.lastFormattedPrice
-      : T.pendingCheck;
-
-    const isEditing = editingGameId === game.id;
-    const isMuted = !!game.muted;
-
-    li.innerHTML = `
-      <div class="row1">
-        <span class="game-name">${escapeHtml(game.name)}</span>
-        <span class="card-actions">
-          <a class="link-btn" href="https://store.steampowered.com/app/${game.appid}" target="_blank" rel="noopener" title="${escapeHtml(T.linkTitle)}">🔗</a>
-          <button class="mute-btn ${isMuted ? "is-muted" : ""}" title="${escapeHtml(isMuted ? T.unmuteTitle : T.muteTitle)}">${isMuted ? "🔕" : "🔔"}</button>
-          ${game.alertType !== "sale" ? `<button class="edit-btn" title="${escapeHtml(T.editTitle)}">✎</button>` : ""}
-          <button class="remove-btn" title="${escapeHtml(T.removeTitle)}">✕</button>
-        </span>
-      </div>
-      <div class="row1">
-        <span class="game-price ${reached ? "" : "above-target"}">${escapeHtml(priceLabel)}</span>
-        <span>
-          ${game.lastDiscount ? `<span class="discount-badge">-${game.lastDiscount}%</span>` : ""}
-          ${isMuted ? `<span class="muted-badge">${escapeHtml(T.mutedBadge)}</span>` : reached ? `<span class="reached-badge">${escapeHtml(T.reachedBadge)}</span>` : ""}
-        </span>
-      </div>
-      <div class="game-meta">
-        <span>${game.alertType === "sale" ? escapeHtml(T.targetMetaSale) : `${escapeHtml(T.targetMetaLabel)} ${game.targetPrice != null ? game.targetPrice : "—"}`}</span>
-        <span>${escapeHtml(T.lastCheckedPrefix)} ${formatRelativeTime(game.lastCheckedAt)}</span>
-      </div>
-      ${game.lastError ? `<span class="error-text">${escapeHtml(game.lastError)}</span>` : ""}
-      ${isEditing && game.alertType !== "sale" ? `
-        <div class="edit-target-row">
-          <input type="number" step="0.25" min="0" lang="en" class="edit-target-input" value="${game.targetPrice != null ? game.targetPrice : ""}" />
-          <button class="save-target-btn">${escapeHtml(T.saveBtn)}</button>
-          <button class="cancel-edit-btn secondary">${escapeHtml(T.cancelBtn)}</button>
-        </div>
-      ` : ""}
-    `;
-
-    li.querySelector(".remove-btn").addEventListener("click", async () => {
-      const games = await sendMessage("REMOVE_GAME", { id: game.id });
-      renderGames(games);
-    });
-
-    li.querySelector(".mute-btn").addEventListener("click", async () => {
-      const games = await sendMessage("UPDATE_GAME", { id: game.id, patch: { muted: !isMuted } });
-      renderGames(games);
-    });
-
-    li.querySelector(".edit-btn")?.addEventListener("click", () => {
-      editingGameId = isEditing ? null : game.id;
-      renderGames(currentGames);
-    });
-
-    if (isEditing) {
-      const input = li.querySelector(".edit-target-input");
-      li.querySelector(".save-target-btn").addEventListener("click", async () => {
-        const newTarget = parseFloat(input.value);
-        if (isNaN(newTarget) || newTarget < 0) {
-          alert(tr().invalidPriceAlert);
-          return;
-        }
-        const games = await sendMessage("UPDATE_GAME", { id: game.id, patch: { targetPrice: newTarget } });
-        editingGameId = null;
-        renderGames(games);
-      });
-      li.querySelector(".cancel-edit-btn").addEventListener("click", () => {
-        editingGameId = null;
-        renderGames(currentGames);
-      });
-    }
-
-    gamesListEl.appendChild(li);
+    gamesListEl.appendChild(buildGameCard(game, T));
   }
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str ?? "";
-  return div.innerHTML;
 }
 
 function refreshStatus(lastChecked) {
@@ -339,6 +423,30 @@ searchInput.addEventListener("keydown", e => {
   if (e.key === "Enter") doSearch();
 });
 
+function showSearchStatus(text, isError) {
+  const p = document.createElement("p");
+  p.className = isError ? "search-status search-status-error" : "search-status";
+  p.textContent = text;
+  searchResultsEl.replaceChildren(p);
+}
+
+function buildSearchResultItem(r) {
+  const div = document.createElement("div");
+  div.className = "search-result-item";
+
+  const img = document.createElement("img");
+  img.src = r.image || "";
+  img.alt = "";
+  div.appendChild(img);
+
+  const span = document.createElement("span");
+  span.textContent = r.name;
+  div.appendChild(span);
+
+  div.addEventListener("click", () => selectGame(r));
+  return div;
+}
+
 async function doSearch() {
   const term = searchInput.value.trim();
   if (!term) return;
@@ -347,24 +455,20 @@ async function doSearch() {
   resetAddForm();
 
   const T = tr();
-  searchResultsEl.innerHTML = `<p style='padding:6px;color:#8f98a0;'>${escapeHtml(T.searching)}</p>`;
+  showSearchStatus(T.searching, false);
   searchResultsEl.classList.remove("hidden");
   try {
     const results = await sendMessage("SEARCH_GAME", { term });
     if (!results.length) {
-      searchResultsEl.innerHTML = `<p style='padding:6px;color:#8f98a0;'>${escapeHtml(T.noResults)}</p>`;
+      showSearchStatus(T.noResults, false);
       return;
     }
-    searchResultsEl.innerHTML = "";
+    searchResultsEl.replaceChildren();
     for (const r of results.slice(0, 8)) {
-      const div = document.createElement("div");
-      div.className = "search-result-item";
-      div.innerHTML = `<img src="${r.image || ""}" alt="" /><span>${escapeHtml(r.name)}</span>`;
-      div.addEventListener("click", () => selectGame(r));
-      searchResultsEl.appendChild(div);
+      searchResultsEl.appendChild(buildSearchResultItem(r));
     }
   } catch (e) {
-    searchResultsEl.innerHTML = `<p style='padding:6px;color:#e23f3f;'>${escapeHtml(e.message)}</p>`;
+    showSearchStatus(e.message, true);
   }
 }
 
