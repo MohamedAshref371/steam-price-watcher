@@ -323,14 +323,14 @@ chrome.runtime.onStartup.addListener(async () => {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
     try {
+      const { settings } = await getState();
+      const tr = t(settings.language);
       switch (msg.type) {
         case "GET_STATE": {
           sendResponse({ ok: true, data: await getState() });
           break;
         }
         case "SEARCH_GAME": {
-          const { settings } = await getState();
-          const tr = t(settings.language);
           const results = await searchGames(msg.term, settings.countryCode, tr);
           sendResponse({ ok: true, data: results });
           break;
@@ -396,7 +396,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           break;
         }
         default:
-          sendResponse({ ok: false, tr.unknownCommand });
+          sendResponse({ ok: false, error: tr.unknownCommand });
       }
     } catch (e) {
       sendResponse({ ok: false, error: e.message || String(e) });
