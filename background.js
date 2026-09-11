@@ -241,6 +241,8 @@ async function checkSingleGameById(gameId, { notify = true } = {}) {
   const updatedGames = games.map(g => (g.id === gameId ? updated : g));
   await saveGames(updatedGames);
 
+  chrome.runtime.sendMessage({ type: "GAME_CHECK_DONE", gameId, game: updated }).catch(() => {});
+
   if (notify && alert) {
     fireNotification(alert.game, alert.priceInfo, tr);
   }

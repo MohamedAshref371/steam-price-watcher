@@ -551,13 +551,17 @@ confirmAddBtn.addEventListener("click", async () => {
   renderGames(games);
   resetAddForm();
   searchInput.value = "";
+});
 
-  // Re-check shortly after adding, to show the actual price once available
-  setTimeout(async () => {
-    const state = await sendMessage("GET_STATE");
-    renderGames(state.games);
-    refreshStatus(state.lastChecked);
-  }, 1500);
+ 
+// ---------- Messages pushed from background.js ----------
+ 
+chrome.runtime.onMessage.addListener(msg => {
+  if (msg.type === "GAME_CHECK_DONE") {
+    const games = currentGames.map(g => (g.id === msg.gameId ? msg.game : g));
+    renderGames(games);
+    refreshStatus(Date.now());
+  }
 });
 
 init();
