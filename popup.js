@@ -292,9 +292,10 @@ function buildGameCard(game, T) {
     saveBtn.addEventListener("click", async () => {
       const newTarget = parseFloat(input.value);
       if (isNaN(newTarget) || newTarget < 0) {
-        alert(tr().invalidPriceAlert);
+        editTargetError.classList.remove("hidden");
         return;
       }
+      editTargetError.classList.add("hidden");
       const games = await sendMessage("UPDATE_GAME", { id: game.id, patch: { targetPrice: newTarget } });
       editingGameId = null;
       renderGames(games);
@@ -311,6 +312,11 @@ function buildGameCard(game, T) {
     editRow.appendChild(cancelBtn);
 
     li.appendChild(editRow);
+
+    const editTargetError = document.createElement("p");
+    editTargetError.className = "field-error hidden";
+    editTargetError.textContent = T.invalidPriceAlert;
+    li.appendChild(editTargetError);
   }
 
   return li;
