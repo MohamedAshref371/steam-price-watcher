@@ -9,7 +9,7 @@ const DEFAULT_SETTINGS = {
   intervalHours: 12,   // 1, 3, 6, 12, or 24
   countryCode: "eg",   // Steam store region (affects currency/pricing) — changeable from the popup
   language: "ar",      // ar or en
-  repeatAlerts: false, // false = notify once per price, true = notify every check while below target
+  repeatAlerts: true,  // false = notify once per price, true = notify every check while below target
   sortBy: "default"    // default | cheapest | closest | discount
 };
 
