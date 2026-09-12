@@ -560,7 +560,6 @@ chrome.runtime.onMessage.addListener(msg => {
   if (msg.type === "GAME_CHECK_DONE") {
     const games = currentGames.map(g => (g.id === msg.gameId ? msg.game : g));
     renderGames(games);
-    refreshStatus(Date.now());
   }
 });
 
