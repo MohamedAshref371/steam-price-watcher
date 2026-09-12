@@ -303,14 +303,16 @@ chrome.alarms.onAlarm.addListener(alarm => {
 });
 
 chrome.runtime.onInstalled.addListener(async details => {
-  const { settings } = await getState();
+  const { settings, lastChecked } = await getState();
 
   if (details.reason === "install") {
     // Fresh install: guess a sensible region/language from the browser's settings
     const detected = detectDefaultsFromLocale();
     settings.countryCode = detected.countryCode;
     settings.language = detected.language;
-    await setLastChecked(Date.now());
+    if (lastChecked == null) {
+      await setLastChecked(Date.now());
+    }
   }
 
   await saveSettings(settings);
