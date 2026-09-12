@@ -177,6 +177,12 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
   margin: 6px 0 0 0;
 }
 
+.field-error {
+  color: #e23f3f;
+  font-size: 11px;
+  margin: 6px 0 0 0;
+}
+
 .settings {
   display: flex;
   align-items: center;

@@ -20,6 +20,7 @@ const targetPriceInput = document.getElementById("targetPriceInput");
 const confirmAddBtn = document.getElementById("confirmAddBtn");
 const cancelAddBtn = document.getElementById("cancelAddBtn");
 const duplicateWarningText = document.getElementById("duplicateWarningText");
+const targetPriceError = document.getElementById("targetPriceErrorText");
 const intervalLabelText = document.getElementById("intervalLabelText");
 const intervalSelect = document.getElementById("intervalSelect");
 const repeatAlertsCheckbox = document.getElementById("repeatAlertsCheckbox");
@@ -97,6 +98,7 @@ function applyStaticTexts() {
   sortLabelText.textContent = T.sortLabel;
   emptyStateEl.textContent = T.emptyState;
   duplicateWarningText.textContent = T.gameAlreadyAdded;
+  targetPriceError.textContent = T.invalidPriceAlert;
 
   const sortOptions = sortSelect.querySelectorAll("option");
   sortOptions[0].textContent = T.sortDefault;
@@ -484,6 +486,7 @@ function resetAddForm() {
   addForm.classList.add("hidden");
   targetPriceInput.value = "";
   duplicateWarningText.classList.add("hidden");
+  targetPriceError.classList.add("hidden");
 }
 
 alertTypeRadios.forEach(radio => {
@@ -540,9 +543,10 @@ confirmAddBtn.addEventListener("click", async () => {
   if (alertType === "target") {
     targetPrice = parseFloat(targetPriceInput.value);
     if (isNaN(targetPrice) || targetPrice < 0) {
-      alert(tr().invalidPriceAlert);
+      targetPriceError.classList.remove("hidden");
       return;
     }
+    targetPriceError.classList.add("hidden");
   }
 
   const games = await sendMessage("ADD_GAME", {
