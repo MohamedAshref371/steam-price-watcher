@@ -310,6 +310,7 @@ chrome.runtime.onInstalled.addListener(async details => {
     const detected = detectDefaultsFromLocale();
     settings.countryCode = detected.countryCode;
     settings.language = detected.language;
+    await setLastChecked(Date.now());
   }
 
   await saveSettings(settings);
