@@ -178,7 +178,7 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
 }
 
 .field-error {
-  color: #e23f3f;
+  color: #ff6b6b;
   font-size: 11px;
   margin: 6px 0 0 0;
 }
@@ -272,8 +272,8 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
 }
 
 .discount-badge {
-  background: #4c6b22;
-  color: #a4d007;
+  background: #375016;
+  color: #b8e619;
   border-radius: 3px;
   padding: 1px 6px;
   font-size: 11px;
@@ -345,14 +345,14 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #8
 }
 
 .reached-badge {
-  background: #2a6b2a;
-  color: #a4d007;
+  background: #1f4d1f;
+  color: #b8e619;
   border-radius: 3px;
   padding: 1px 6px;
   font-size: 11px;
 }
 
-.error-text { color: #e23f3f; font-size: 11px; }
+.error-text { color: #ff6b6b; font-size: 11px; }
 
 .empty-state {
   color: #8f98a0;
