@@ -4,6 +4,7 @@ const appTitleEl = document.getElementById("appTitle");
 const langSelect = document.getElementById("langSelect");
 const statusText = document.getElementById("statusText");
 const refreshBtn = document.getElementById("refreshBtn");
+const openTabBtn = document.getElementById("openTabBtn");
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
 const searchResultsEl = document.getElementById("searchResults");
@@ -82,6 +83,7 @@ function applyStaticTexts() {
 
   appTitleEl.textContent = T.appTitle;
   refreshBtn.title = T.refreshTitle;
+  openTabBtn.title = T.openTabTitle;
   searchInput.placeholder = T.searchPlaceholder;
   searchBtn.textContent = T.searchBtn;
   currentPriceLabelText.textContent = T.currentPriceLabel;
@@ -371,6 +373,20 @@ async function init() {
   renderGames(state.games);
   refreshStatus(state.lastChecked);
 }
+
+// ---------- Standalone (full page) mode ----------
+
+// When popup.html is opened as its own browser tab (via the button below), it carries
+// ?standalone=1 in the URL. We use that to switch to a wider, roomier layout (see popup.css)
+// and hide the "open in tab" button, since it's already open in a tab.
+const isStandalone = new URLSearchParams(window.location.search).get("standalone") === "1";
+if (isStandalone) {
+  document.body.classList.add("standalone");
+}
+
+openTabBtn.addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") + "?standalone=1" });
+});
 
 // ---------- Events ----------
 

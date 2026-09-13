@@ -240,16 +240,24 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
   min-width: 70px;
 }
 
-.games-list ul { list-style: none; padding: 0; margin: 0; }
+.games-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
 .game-card {
   background: #16202d;
   border-radius: 6px;
   padding: 8px 10px;
-  margin-bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1 1 auto;
+  min-width: 200px;
 }
 
 .game-card .row1 {
@@ -258,7 +266,14 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
   align-items: center;
 }
 
-.game-name { font-weight: 600; color: #ffffff; }
+.game-name {
+  font-weight: 600;
+  color: #ffffff;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 
 .game-price { color: #a4d007; font-weight: 600; }
 .game-price.above-target { color: #c7d5e0; }
@@ -370,3 +385,108 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
 }
 
 .hidden { display: none !important; }
+
+/* ---------- Standalone (full page) mode ---------- */
+/* Applied to <body> via JS when popup.html is opened in its own tab instead of the small extension popup */
+
+html:has(body.standalone) {
+  background: #0e161f;
+}
+
+body.standalone {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 32px 16px;
+  font-size: 15px;
+  background: #0e161f;
+  display: flex;
+  justify-content: center;
+}
+
+body.standalone .app {
+  width: 100%;
+  max-width: 720px;
+  background: #1b2838;
+  border-radius: 10px;
+  padding: 28px 32px 32px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+body.standalone .app-header h1 {
+  font-size: 24px;
+}
+
+body.standalone #openTabBtn {
+  display: none;
+}
+
+body.standalone .add-game {
+  padding: 16px;
+}
+
+body.standalone input[type="text"],
+body.standalone input[type="number"],
+body.standalone select,
+body.standalone button {
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+body.standalone .github-link svg {
+  width: 20px;
+  height: 20px;
+}
+
+body.standalone .game-card {
+  padding: 12px 14px;
+}
+
+body.standalone .search-results {
+  max-height: 260px;
+}
+
+/* Every element below sets its own fixed px font-size, so it won't grow just from the
+   body font-size bump above — scale each one up explicitly for standalone mode. */
+body.standalone .lang-select,
+body.standalone .status-row,
+body.standalone .alert-type-row,
+body.standalone .repeat-alerts-row,
+body.standalone .sort-row,
+body.standalone .region-row,
+body.standalone .edit-target-row button {
+  font-size: 14px;
+}
+
+body.standalone .icon-btn,
+body.standalone .lang-icon,
+body.standalone .remove-btn,
+body.standalone .link-btn,
+body.standalone .edit-btn,
+body.standalone .mute-btn {
+  font-size: 16px;
+}
+
+body.standalone .game-meta,
+body.standalone .discount-badge,
+body.standalone .muted-badge,
+body.standalone .reached-badge,
+body.standalone .error-text,
+body.standalone .duplicate-warning,
+body.standalone .field-error {
+  font-size: 13px;
+}
+
+body.standalone .game-name {
+  font-size: 16px;
+}
+
+body.standalone .empty-state {
+  font-size: 15px;
+}
+
+body.standalone .search-result-item img,
+body.standalone .selected-game img {
+  width: 56px;
+  height: 25px;
+}
