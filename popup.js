@@ -61,17 +61,26 @@ function sendMessage(type, payload = {}) {
   });
 }
 
-function formatRelativeTime(ts) {
+function formatRelativeTime(ts, showSub = true) {
   const T = tr();
   if (!ts) return T.neverChecked;
   const diffMs = Date.now() - ts;
-  const mins = Math.round(diffMs / 60000);
-  if (mins < 1) return T.justNow;
-  if (mins < 60) return T.minutesAgo(mins);
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return T.hoursAgo(hours);
-  const days = Math.round(hours / 24);
-  return T.daysAgo(days);
+
+  const totalMins = Math.round(diffMs / 60000);
+  if (totalMins < 1) return T.justNow;
+  if (totalMins < 60) return T.minutesAgo(totalMins);
+
+  const rawHours = diffMs / 3600000;
+  if (rawHours < 24) {
+    const hours = showSub ? Math.floor(rawHours) : Math.round(rawHours);
+    const remMins = showSub ? totalMins % 60 : 0;
+    return T.hoursAgo(hours, remMins);
+  }
+
+  const rawDays = diffMs / 86400000;
+  const days = showSub ? Math.floor(rawDays) : Math.round(rawDays);
+  const remHours = showSub ? Math.floor(rawHours) % 24 : 0;
+  return T.daysAgo(days, remHours);
 }
 
 // ---------- Applying UI text per language ----------
@@ -263,7 +272,7 @@ function buildGameCard(game, T) {
   meta.appendChild(targetMetaSpan);
 
   const lastCheckedSpan = document.createElement("span");
-  lastCheckedSpan.textContent = `${T.lastCheckedPrefix} ${formatRelativeTime(game.lastCheckedAt)}`;
+  lastCheckedSpan.textContent = `${T.lastCheckedPrefix} ${formatRelativeTime(game.lastCheckedAt, false)}`;
   meta.appendChild(lastCheckedSpan);
 
   li.appendChild(meta);

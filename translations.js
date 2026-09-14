@@ -1,5 +1,25 @@
 // translations.js — shared translation dictionary (loaded in popup.js via <script> and in background.js via importScripts)
 
+const AR_UNITS = {
+  minute: { one: "دقيقة", two: "دقيقتين", few: "دقائق", many: "دقيقة" },
+  hour:   { one: "ساعة",  two: "ساعتين",  few: "ساعات", many: "ساعة" },
+  day:    { one: "يوم",   two: "يومين",   few: "أيام",  many: "يوم" }
+};
+
+function arabicPlural(n, forms) {
+  if (n === 1) return forms.one;
+  if (n === 2) return forms.two;
+  if (n >= 3 && n <= 10) return forms.few;
+  return forms.many;
+}
+
+function arabicCount(n, unit) {
+  const forms = AR_UNITS[unit];
+  if (n === 1) return forms.one;
+  if (n === 2) return forms.two;
+  return `${n} ${arabicPlural(n, forms)}`;
+}
+
 const TRANSLATIONS = {
   ar: {
     dir: "rtl",
@@ -11,9 +31,15 @@ const TRANSLATIONS = {
     neverChecked: "لم يتم الفحص بعد",
     checking: "جارٍ الفحص...",
     justNow: "الآن",
-    minutesAgo: n => `منذ ${n} دقيقة`,
-    hoursAgo: n => `منذ ${n} ساعة`,
-    daysAgo: n => `منذ ${n} يوم`,
+    minutesAgo: n => `منذ ${arabicCount(n, "minute")}`,
+    hoursAgo: (h, m) => {
+      const hPart = `منذ ${arabicCount(h, "hour")}`;
+      return m === 0 ? hPart : `${hPart} و${arabicCount(m, "minute")}`;
+    },
+    daysAgo: (d, h) => {
+      const dPart = `منذ ${arabicCount(d, "day")}`;
+      return h === 0 ? dPart : `${dPart} و${arabicCount(h, "hour")}`;
+    },
     searchPlaceholder: "ابحث عن اسم اللعبة...",
     searchBtn: "بحث",
     searching: "جارٍ البحث...",
@@ -76,8 +102,16 @@ const TRANSLATIONS = {
     checking: "Checking...",
     justNow: "Just now",
     minutesAgo: n => `${n} min ago`,
-    hoursAgo: n => `${n} hr ago`,
-    daysAgo: n => `${n} day(s) ago`,
+    hoursAgo: (h, m) => {
+      const hPart = `${h} hr${h !== 1 ? "s" : ""} ago`;
+      if (m === 0) return hPart;
+      return `${h} hr${h !== 1 ? "s" : ""} ${m} min ago`;
+    },
+    daysAgo: (d, h) => {
+      const dPart = `${d} day${d !== 1 ? "s" : ""} ago`;
+      if (h === 0) return dPart;
+      return `${d} day${d !== 1 ? "s" : ""} ${h} hr${h !== 1 ? "s" : ""} ago`;
+    },
     searchPlaceholder: "Search for a game name...",
     searchBtn: "Search",
     searching: "Searching...",
