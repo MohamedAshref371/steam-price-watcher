@@ -1,5 +1,7 @@
 // popup.js — extension popup UI
 
+const MAX_TARGET_PRICE = 9999999;
+
 const appTitleEl = document.getElementById("appTitle");
 const langSelect = document.getElementById("langSelect");
 const statusText = document.getElementById("statusText");
@@ -292,6 +294,7 @@ function buildGameCard(game, T) {
     input.type = "number";
     input.step = "0.25";
     input.min = "0";
+    input.max = String(MAX_TARGET_PRICE);
     input.lang = "en";
     input.className = "edit-target-input";
     input.value = game.targetPrice != null ? game.targetPrice : "";
@@ -302,7 +305,8 @@ function buildGameCard(game, T) {
     saveBtn.textContent = T.saveBtn;
     saveBtn.addEventListener("click", async () => {
       const newTarget = parseFloat(input.value);
-      if (isNaN(newTarget) || newTarget < 0) {
+      if (isNaN(newTarget) || newTarget < 0 || newTarget > MAX_TARGET_PRICE) {
+        editTargetError.textContent = newTarget > MAX_TARGET_PRICE ? T.maxPriceAlert : T.invalidPriceAlert;
         editTargetError.classList.remove("hidden");
         return;
       }
@@ -573,7 +577,8 @@ confirmAddBtn.addEventListener("click", async () => {
   let targetPrice = null;
   if (alertType === "target") {
     targetPrice = parseFloat(targetPriceInput.value);
-    if (isNaN(targetPrice) || targetPrice < 0) {
+    if (isNaN(targetPrice) || targetPrice < 0 || targetPrice > MAX_TARGET_PRICE) {
+      targetPriceError.textContent = targetPrice > MAX_TARGET_PRICE ? tr().maxPriceAlert : tr().invalidPriceAlert;
       targetPriceError.classList.remove("hidden");
       return;
     }
