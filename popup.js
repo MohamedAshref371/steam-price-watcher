@@ -387,18 +387,10 @@ async function init() {
   refreshStatus(state.lastChecked);
 }
 
-// ---------- Standalone (full page) mode ----------
-
-// When popup.html is opened as its own browser tab (via the button below), it carries
-// ?standalone=1 in the URL. We use that to switch to a wider, roomier layout (see popup.css)
-// and hide the "open in tab" button, since it's already open in a tab.
-const isStandalone = new URLSearchParams(window.location.search).get("standalone") === "1";
-if (isStandalone) {
-  document.body.classList.add("standalone");
-}
+// ---------- Full page mode ----------
 
 openTabBtn.addEventListener("click", () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") + "?standalone=1" });
+  chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") });
 });
 
 // ---------- Events ----------
