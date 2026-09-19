@@ -29,12 +29,14 @@ A lightweight browser extension for **Chrome** and **Firefox** that tracks the p
 4. Select the extension folder (the one containing `manifest.json`)
 
 ### 🦊 Firefox
-Permanent installation requires the extension to be signed by Mozilla. To try it locally:
+👉 **[Install from addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/steam-price-watcher/)**
+
+Alternatively, to load it locally without installing from AMO:
 1. Open `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on**
 3. Select the `manifest.json` file inside the extension folder
 
-> ⚠️ **Note:** A temporary add-on in Firefox is removed when the browser closes. For a permanent install, the extension needs to be submitted to [addons.mozilla.org](https://addons.mozilla.org) (it can be submitted as *unlisted* to get it signed without publishing it publicly). This extension requires **Firefox 140+** (Firefox for Android 142+), as declared in its manifest.
+> ⚠️ **Note:** A temporary add-on loaded this way is removed when the browser closes — use the AMO link above for a permanent install. This extension requires **Firefox 140+** (Firefox for Android 142+), as declared in its manifest.
 
 ---
 
