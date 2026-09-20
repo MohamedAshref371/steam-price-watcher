@@ -2,14 +2,55 @@
 
 const MAX_TARGET_PRICE = 9999999;
 
-// Static, trusted SVG markup for card-action icons (safe to use with innerHTML — no user data inside).
-const ICONS = {
-  link: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M6.5 9.5 13 3M8.5 3H13v4.5M12 9v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  edit: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/><circle cx="19" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="2.6" cy="21.4" r="1.1" fill="currentColor" stroke="none"/></svg>`,
-  remove: `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3.5 3.5 12.5 12.5M12.5 3.5 3.5 12.5" stroke-linecap="round"/></svg>`,
-  bell: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5v2"/><path d="M18 9a6 6 0 0 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 15.5 18 9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/><circle cx="18.3" cy="6" r="2" fill="currentColor" stroke="none"/></svg>`,
-  bellOff: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5v2"/><path d="M18 9a6 6 0 0 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 15.5 18 9z"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M3.5 3.5l17 17" stroke-width="2"/></svg>`
+// Card-action icons, built as real SVG DOM nodes.
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const key in attrs) el.setAttribute(key, attrs[key]);
+  return el;
+}
+
+function buildIcon(viewBox, defaultAttrs, shapes) {
+  const svg = svgEl("svg", { viewBox, width: "14", height: "14", "aria-hidden": "true", ...defaultAttrs });
+  shapes.forEach(([tag, attrs]) => svg.appendChild(svgEl(tag, attrs)));
+  return svg;
+}
+
+const STROKE_16 = { fill: "none", stroke: "currentColor", "stroke-width": "1.4" };
+const STROKE_24 = { fill: "none", stroke: "currentColor", "stroke-width": "1.8", "stroke-linecap": "round", "stroke-linejoin": "round" };
+
+const ICON_TEMPLATES = {
+  link: buildIcon("0 0 16 16", { ...STROKE_16, "stroke-linecap": "round", "stroke-linejoin": "round" }, [
+    ["path", { d: "M6.5 9.5 13 3M8.5 3H13v4.5M12 9v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3" }]
+  ]),
+  edit: buildIcon("0 0 24 24", STROKE_24, [
+    ["path", { d: "M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" }],
+    ["circle", { cx: "19", cy: "5", r: "1.5", fill: "currentColor", stroke: "none" }],
+    ["circle", { cx: "2.6", cy: "21.4", r: "1.1", fill: "currentColor", stroke: "none" }]
+  ]),
+  remove: buildIcon("0 0 16 16", { fill: "none", stroke: "currentColor", "stroke-width": "1.6" }, [
+    ["path", { d: "M3.5 3.5 12.5 12.5M12.5 3.5 3.5 12.5", "stroke-linecap": "round" }]
+  ]),
+  bell: buildIcon("0 0 24 24", STROKE_24, [
+    ["path", { d: "M12 2.5v2" }],
+    ["path", { d: "M18 9a6 6 0 0 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 15.5 18 9z" }],
+    ["path", { d: "M13.7 21a2 2 0 0 1-3.4 0" }],
+    ["circle", { cx: "18.3", cy: "6", r: "2", fill: "currentColor", stroke: "none" }]
+  ]),
+  bellOff: buildIcon("0 0 24 24", STROKE_24, [
+    ["path", { d: "M12 2.5v2" }],
+    ["path", { d: "M18 9a6 6 0 0 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 15.5 18 9z" }],
+    ["path", { d: "M13.7 21a2 2 0 0 1-3.4 0" }],
+    ["path", { d: "M3.5 3.5l17 17", "stroke-width": "2" }]
+  ])
 };
+
+// Clears a button's content and inserts a fresh clone of the given icon template.
+function setIcon(button, templateKey) {
+  while (button.firstChild) button.removeChild(button.firstChild);
+  button.appendChild(ICON_TEMPLATES[templateKey].cloneNode(true));
+}
 
 const appTitleEl = document.getElementById("appTitle");
 const langSelect = document.getElementById("langSelect");
@@ -203,13 +244,13 @@ function buildGameCard(game, T) {
   linkBtn.target = "_blank";
   linkBtn.rel = "noopener";
   linkBtn.title = T.linkTitle;
-  linkBtn.innerHTML = ICONS.link;
+  setIcon(linkBtn, "link");
   actions.appendChild(linkBtn);
 
   const muteBtn = document.createElement("button");
   muteBtn.className = "mute-btn" + (isMuted ? " is-muted" : "");
   muteBtn.title = isMuted ? T.unmuteTitle : T.muteTitle;
-  muteBtn.innerHTML = isMuted ? ICONS.bellOff : ICONS.bell;
+  setIcon(muteBtn, isMuted ? "bellOff" : "bell");
   muteBtn.addEventListener("click", async () => {
     const games = await sendMessage("UPDATE_GAME", { id: game.id, patch: { muted: !isMuted } });
     renderGames(games);
@@ -220,7 +261,7 @@ function buildGameCard(game, T) {
     const editBtn = document.createElement("button");
     editBtn.className = "edit-btn";
     editBtn.title = T.editTitle;
-    editBtn.innerHTML = ICONS.edit;
+    setIcon(editBtn, "edit");
     editBtn.addEventListener("click", () => {
       editingGameId = isEditing ? null : game.id;
       renderGames(currentGames);
@@ -231,7 +272,7 @@ function buildGameCard(game, T) {
   const removeBtn = document.createElement("button");
   removeBtn.className = "remove-btn";
   removeBtn.title = T.removeTitle;
-  removeBtn.innerHTML = ICONS.remove;
+  setIcon(removeBtn, "remove");
   removeBtn.addEventListener("click", async () => {
     const games = await sendMessage("REMOVE_GAME", { id: game.id });
     renderGames(games);
