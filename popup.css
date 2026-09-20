@@ -1,7 +1,7 @@
 * { box-sizing: border-box; }
 
 body {
-  margin: 0;
+  margin: 0 auto;
   width: 360px;
   font-family: "Segoe UI", Tahoma, Arial, sans-serif;
   background: #1b2838;
@@ -21,6 +21,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 6px;
 }
@@ -32,7 +33,8 @@ body {
 }
 
 .lang-icon {
-  font-size: 14px;
+  color: #66c0f4;
+  flex: none;
 }
 
 .lang-select {
@@ -41,7 +43,7 @@ body {
   padding: 5px 8px;
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid #66c0f4;
+  border: 1px solid #2a475e;
   border-radius: 5px;
   background: #1b2838;
   color: #66c0f4;
@@ -61,13 +63,16 @@ body {
 }
 
 .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: 1px solid #2a475e;
   border-radius: 4px;
   color: #66c0f4;
   cursor: pointer;
   font-size: 14px;
-  padding: 2px 8px;
+  padding: 5px 9px;
 }
 .icon-btn:hover { background: #2a475e; }
 
@@ -173,13 +178,13 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
 
 .duplicate-warning {
   color: #e2a03f;
-  font-size: 11px;
+  font-size: 12px;
   margin: 6px 0 0 0;
 }
 
 .field-error {
   color: #ff6b6b;
-  font-size: 11px;
+  font-size: 12px;
   margin: 6px 0 0 0;
 }
 
@@ -188,6 +193,9 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  padding: 10px;
+  background: #16202d;
+  border-radius: 6px;
   color: #a6adb4;
   flex-wrap: wrap;
 }
@@ -280,7 +288,7 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
 .game-price.free { color: #a4d007; }
 
 .game-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: #a6adb4;
   display: flex;
   justify-content: space-between;
@@ -291,56 +299,39 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
   color: #b8e619;
   border-radius: 3px;
   padding: 1px 6px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
-.remove-btn {
-  background: none;
-  border: none;
-  color: #a6adb4;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 0 4px;
-}
-.remove-btn:hover { color: #e23f3f; }
-
-.link-btn {
-  color: #a6adb4;
-  text-decoration: none;
-  font-size: 13px;
-  padding: 0 4px;
+.remove-btn,
+.link-btn,
+.edit-btn,
+.mute-btn {
   display: inline-flex;
   align-items: center;
-}
-.link-btn:hover { color: #66c0f4; }
-
-.edit-btn {
+  justify-content: center;
   background: none;
   border: none;
-  color: #a6adb4;
   cursor: pointer;
-  font-size: 13px;
-  padding: 0 4px;
+  text-decoration: none;
+  padding: 3px 4px;
 }
-.edit-btn:hover { color: #66c0f4; }
-
-.mute-btn {
-  background: none;
-  border: none;
-  color: #a6adb4;
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0 4px;
-}
-.mute-btn:hover { color: #e2a03f; }
+.link-btn { color: #66c0f4; }
+.link-btn:hover { color: #8ed8ff; }
+.edit-btn { color: #e2a03f; }
+.edit-btn:hover { color: #f4c063; }
+.remove-btn { color: #c1585d; }
+.remove-btn:hover { color: #e23f3f; }
+.mute-btn { color: #a4d007; }
+.mute-btn:hover { color: #c3ef3f; }
 .mute-btn.is-muted { color: #e2a03f; }
+.mute-btn.is-muted:hover { color: #f4c063; }
 
 .muted-badge {
   background: #4a3a1f;
   color: #e2a03f;
   border-radius: 3px;
   padding: 1px 6px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .card-actions { display: flex; align-items: center; gap: 2px; }
@@ -364,10 +355,10 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
   color: #b8e619;
   border-radius: 3px;
   padding: 1px 6px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
-.error-text { color: #ff6b6b; font-size: 11px; }
+.error-text { color: #ff6b6b; font-size: 12px; }
 
 .empty-state {
   color: #a6adb4;
@@ -388,7 +379,7 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
 
 /* ---------- Full page mode ---------- */
 
-@media (min-width: 480px) {
+@media (min-width: 400px) {
   html {
     background: #0e161f;
   }
@@ -459,13 +450,14 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
     font-size: 14px;
   }
 
-  .icon-btn,
+  .icon-btn svg,
   .lang-icon,
-  .remove-btn,
-  .link-btn,
-  .edit-btn,
-  .mute-btn {
-    font-size: 16px;
+  .remove-btn svg,
+  .link-btn svg,
+  .edit-btn svg,
+  .mute-btn svg {
+    width: 16px;
+    height: 16px;
   }
 
   .game-meta,
@@ -475,7 +467,7 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
   .error-text,
   .duplicate-warning,
   .field-error {
-    font-size: 13px;
+    font-size: 14px;
   }
 
   .game-name {
