@@ -409,10 +409,6 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
     font-size: 24px;
   }
 
-  #openTabBtn {
-    display: none;
-  }
-
   .add-game {
     padding: 16px;
   }

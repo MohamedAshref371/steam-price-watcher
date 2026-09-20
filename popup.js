@@ -402,6 +402,12 @@ openTabBtn.addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("popup.html") });
 });
 
+chrome.tabs.getCurrent(tab => {
+  if (tab) {
+    openTabBtn.classList.add("hidden");
+  }
+});
+
 // ---------- Events ----------
 
 langSelect.addEventListener("change", async () => {
