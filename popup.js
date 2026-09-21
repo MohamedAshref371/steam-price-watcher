@@ -92,6 +92,7 @@ let currentGames = [];
 let currentLastChecked = null;
 let editingGameId = null;
 let currentSortBy = "default";
+let currentPreviewInfo = null; // raw PREVIEW_PRICE result for the open add-form, re-rendered on language change
 
 function tr() {
   return t(currentLang);
@@ -217,8 +218,12 @@ function buildGameCard(game, T) {
     game.targetPrice != null &&
     game.lastPrice <= game.targetPrice;
 
-  const priceLabel = game.lastError
+  const priceLabel = game.lastErrorCode
     ? "—"
+    : game.lastFree
+    ? T.freeLabel
+    : game.lastUnavailable
+    ? T.unavailableLabel
     : game.lastFormattedPrice != null
     ? game.lastFormattedPrice
     : T.pendingCheck;
@@ -287,7 +292,8 @@ function buildGameCard(game, T) {
   row2.className = "row1";
 
   const priceSpan = document.createElement("span");
-  priceSpan.className = "game-price" + (reached ? "" : " above-target");
+  priceSpan.className =
+    "game-price" + (game.lastUnavailable ? " unavailable" : reached ? "" : " above-target");
   priceSpan.textContent = priceLabel;
   row2.appendChild(priceSpan);
 
@@ -329,10 +335,10 @@ function buildGameCard(game, T) {
 
   li.appendChild(meta);
 
-  if (game.lastError) {
+  if (game.lastErrorCode) {
     const errorSpan = document.createElement("span");
     errorSpan.className = "error-text";
-    errorSpan.textContent = game.lastError;
+    errorSpan.textContent = game.lastErrorCode === "fetch" ? T.errorPriceFetch : T.errorGeneric;
     li.appendChild(errorSpan);
   }
 
@@ -457,6 +463,9 @@ langSelect.addEventListener("change", async () => {
   applyStaticTexts();
   renderGames(currentGames);
   refreshStatus(currentLastChecked);
+  if (!addForm.classList.contains("hidden")) {
+    renderPricePreview(currentPreviewInfo);
+  }
 });
 
 refreshBtn.addEventListener("click", async () => {
@@ -566,6 +575,7 @@ function setAlertTypeUI(type) {
 // Closes the current add-game form and resets all its fields to their defaults
 function resetAddForm() {
   selectedGame = null;
+  currentPreviewInfo = null;
   addForm.classList.add("hidden");
   targetPriceInput.value = "";
   duplicateWarningText.classList.add("hidden");
@@ -577,6 +587,29 @@ alertTypeRadios.forEach(radio => {
     setAlertTypeUI(radio.value);
   });
 });
+
+// Renders the add-form price preview from the raw (untranslated) PREVIEW_PRICE
+// result. Called after a fresh fetch, and again whenever the language changes
+// while the form is still open, so the text always matches the current language.
+function renderPricePreview(priceInfo) {
+  currentPriceValue.classList.remove("unavailable");
+  if (priceInfo === null) {
+    currentPriceValue.textContent = tr().fetchingPrice;
+    return;
+  }
+  if (!priceInfo.ok) {
+    currentPriceValue.textContent = "—";
+  } else if (priceInfo.free) {
+    currentPriceValue.textContent = tr().freeLabel;
+  } else if (priceInfo.unavailable) {
+    currentPriceValue.textContent = tr().unavailableLabel;
+    currentPriceValue.classList.add("unavailable");
+  } else {
+    currentPriceValue.textContent = priceInfo.discountPercent
+      ? `${priceInfo.formatted} (-${priceInfo.discountPercent}%)`
+      : priceInfo.formatted;
+  }
+}
 
 async function selectGame(game) {
   selectedGame = game;
@@ -592,22 +625,19 @@ async function selectGame(game) {
   const alreadyAdded = currentGames.some(g => g.appid === game.appid);
   duplicateWarningText.classList.toggle("hidden", !alreadyAdded);
 
-  currentPriceValue.textContent = tr().fetchingPrice;
+  currentPreviewInfo = null;
+  renderPricePreview(null);
   targetPriceInput.focus();
 
   try {
     const priceInfo = await sendMessage("PREVIEW_PRICE", { appid: game.appid });
-    if (!priceInfo.ok) {
-      currentPriceValue.textContent = "—";
-    } else if (priceInfo.free) {
-      currentPriceValue.textContent = tr().freeLabel;
-    } else {
-      currentPriceValue.textContent = priceInfo.discountPercent
-        ? `${priceInfo.formatted} (-${priceInfo.discountPercent}%)`
-        : priceInfo.formatted;
-      if (selectedGame === game) selectedGame.currency = priceInfo.currency || "";
+    currentPreviewInfo = priceInfo;
+    renderPricePreview(priceInfo);
+    if (priceInfo.ok && !priceInfo.free && !priceInfo.unavailable && selectedGame === game) {
+      selectedGame.currency = priceInfo.currency || "";
     }
   } catch (e) {
+    currentPreviewInfo = null;
     currentPriceValue.textContent = `${tr().errorPriceFetch} (${e.message})`;
     console.error("PREVIEW_PRICE failed:", e);
   }

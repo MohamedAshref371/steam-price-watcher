@@ -150,6 +150,10 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
   color: #a4d007;
   font-weight: 600;
 }
+#currentPriceValue.unavailable {
+  color: #e2a03f;
+  font-style: italic;
+}
 
 .alert-type-row {
   display: flex;
@@ -286,6 +290,7 @@ button.secondary { background: transparent; border: 1px solid #2a475e; color: #a
 .game-price { color: #a4d007; font-weight: 600; }
 .game-price.above-target { color: #c7d5e0; }
 .game-price.free { color: #a4d007; }
+.game-price.unavailable { color: #e2a03f; font-weight: 500; font-style: italic; }
 
 .game-meta {
   font-size: 12px;

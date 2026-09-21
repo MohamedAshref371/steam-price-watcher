@@ -121,14 +121,24 @@ async function fetchPrice(appid, countryCode) {
   if (!entry || !entry.success) {
     return { ok: false, reason: "not_found" };
   }
-  const overview = entry.data && entry.data.price_overview;
+
+  const basicData = entry.data || {};
+  const overview = basicData.price_overview;
+  const isActuallyFree = basicData.is_free === true;
+
+  if (isActuallyFree) {
+    return { ok: true, free: true, unavailable: false, currentPrice: 0, currency: null, discountPercent: 0, formatted: null };
+  }
+
   if (!overview) {
     // Game may be free, or unavailable in this region
-    return { ok: true, free: true, currentPrice: 0, currency: null, discountPercent: 0, formatted: null };
+    return { ok: true, free: false, unavailable: true, currentPrice: null, currency: null, discountPercent: 0, formatted: null };
   }
+
   return {
     ok: true,
     free: false,
+    unavailable: false,
     currentPrice: overview.final / 100,
     initialPrice: overview.initial / 100,
     currency: overview.currency,
@@ -144,14 +154,16 @@ async function checkOneGame(game, settings, tr) {
   try {
     const priceInfo = await fetchPrice(game.appid, settings.countryCode);
     if (!priceInfo.ok) {
-      return { updated: { ...game, lastError: tr.errorPriceFetch }, alert: null };
+      return { updated: { ...game, lastErrorCode: "fetch" }, alert: null };
     }
 
     const updated = {
       ...game,
-      lastError: null,
-      lastPrice: priceInfo.currentPrice,
-      lastFormattedPrice: priceInfo.free ? tr.freeLabel : priceInfo.formatted,
+      lastErrorCode: null,
+      lastPrice: priceInfo.unavailable ? null : priceInfo.currentPrice,
+      lastFormattedPrice: priceInfo.formatted,
+      lastFree: !!priceInfo.free,
+      lastUnavailable: !!priceInfo.unavailable,
       lastCurrency: priceInfo.currency,
       lastDiscount: priceInfo.discountPercent || 0,
       lastCheckedAt: Date.now()
@@ -159,7 +171,7 @@ async function checkOneGame(game, settings, tr) {
 
     const alertType = game.alertType || "target"; // backwards compatibility with games added before this feature
 
-    const reachedTarget = !priceInfo.free && (
+    const reachedTarget = !priceInfo.free && !priceInfo.unavailable && (
       alertType === "sale"
         ? (priceInfo.discountPercent || 0) > 0
         : game.targetPrice != null && priceInfo.currentPrice <= game.targetPrice
@@ -194,7 +206,7 @@ async function checkOneGame(game, settings, tr) {
 
     return { updated, alert };
   } catch (e) {
-    return { updated: { ...game, lastError: tr.errorGeneric }, alert: null };
+    return { updated: { ...game, lastErrorCode: "generic" }, alert: null };
   }
 }
 
@@ -360,9 +372,11 @@ async function handleMessage(msg) {
           currencyLabel: msg.game.currencyLabel || "",
           lastPrice: null,
           lastFormattedPrice: null,
+          lastFree: false,
+          lastUnavailable: false,
           lastDiscount: null,
           lastCheckedAt: null,
-          lastError: null,
+          lastErrorCode: null,
           notifiedAtPrice: null
         };
         const updatedGames = [...games, newGame];
