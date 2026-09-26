@@ -91,7 +91,8 @@ async function isAdultContent(appid, countryCode) {
     const res = await fetch(url);
     if (!res.ok) return false;
     const data = await res.json();
-    const entry = data[String(appid)];
+    const keys = Object.keys(data);
+    const entry = keys.length ? data[keys[0]] : undefined;
     const ids = entry?.data?.content_descriptors?.ids || [];
     return ids.includes(3) || ids.includes(4);
   } catch (e) {
@@ -99,7 +100,10 @@ async function isAdultContent(appid, countryCode) {
   }
 }
 
-// Fetches current price data for a single appid
+// Fetches current price data for a single appid.
+// Steam sometimes keys the response by a DLC appid instead of the one
+// requested, so we take whichever single entry came back instead of
+// looking up data[appid] directly.
 async function fetchPrice(appid, countryCode) {
   const url = `https://store.steampowered.com/api/appdetails?appids=${appid}&cc=${countryCode}&filters=price_overview,basic`;
   let res;
@@ -117,7 +121,9 @@ async function fetchPrice(appid, countryCode) {
     throw new Error("invalid_json_response");
   }
 
-  const entry = data[String(appid)];
+  const keys = Object.keys(data);
+  const entry = keys.length ? data[keys[0]] : undefined;
+
   if (!entry || !entry.success) {
     return { ok: false, reason: "not_found" };
   }
