@@ -90,6 +90,7 @@ let selectedGame = null;
 let currentLang = "ar";
 let currentGames = [];
 let currentLastChecked = null;
+let currentOfflineRetryAt = null;
 let editingGameId = null;
 let currentSortBy = "default";
 let currentPreviewInfo = null; // raw PREVIEW_PRICE result for the open add-form, re-rendered on language change
@@ -409,9 +410,20 @@ function renderGames(games) {
   }
 }
 
-function refreshStatus(lastChecked) {
+function setStatusText(text, isError) {
+  statusText.textContent = text;
+  statusText.classList.toggle("error-text", !!isError);
+}
+
+function refreshStatus(lastChecked, offlineRetryAt = currentOfflineRetryAt) {
   currentLastChecked = lastChecked;
-  statusText.textContent = `${tr().lastCheckedPrefix} ${formatRelativeTime(lastChecked)}`;
+  currentOfflineRetryAt = offlineRetryAt;
+  if (offlineRetryAt && offlineRetryAt > Date.now()) {
+    const minsLeft = Math.max(1, Math.ceil((offlineRetryAt - Date.now()) / 60000));
+    setStatusText(tr().offlineRetryMessage(minsLeft), true);
+    return;
+  }
+  setStatusText(`${tr().lastCheckedPrefix} ${formatRelativeTime(lastChecked)}`, false);
 }
 
 // ---------- Initial setup ----------
@@ -440,7 +452,7 @@ async function init() {
 
   applyStaticTexts();
   renderGames(state.games);
-  refreshStatus(state.lastChecked);
+  refreshStatus(state.lastChecked, state.offlineRetryAt);
 }
 
 // ---------- Full page mode ----------
@@ -469,10 +481,14 @@ langSelect.addEventListener("change", async () => {
 });
 
 refreshBtn.addEventListener("click", async () => {
-  statusText.textContent = tr().checking;
-  const result = await sendMessage("FORCE_CHECK");
-  renderGames(result.games);
-  refreshStatus(Date.now());
+  setStatusText(tr().checking, false);
+  try {
+    const result = await sendMessage("FORCE_CHECK");
+    renderGames(result.games);
+    refreshStatus(Date.now(), null);
+  } catch (e) {
+    setStatusText(e.message, true);
+  }
 });
 
 intervalSelect.addEventListener("change", async () => {
@@ -491,11 +507,15 @@ sortSelect.addEventListener("change", async () => {
 
 async function applyRegionChange(code) {
   if (!code || code.length !== 2) return;
-  statusText.textContent = tr().checking;
+  setStatusText(tr().checking, false);
   await sendMessage("UPDATE_SETTINGS", { patch: { countryCode: code.toLowerCase() } });
-  const result = await sendMessage("FORCE_CHECK");
-  renderGames(result.games);
-  refreshStatus(Date.now());
+  try {
+    const result = await sendMessage("FORCE_CHECK");
+    renderGames(result.games);
+    refreshStatus(Date.now(), null);
+  } catch (e) {
+    setStatusText(e.message, true);
+  }
 }
 
 regionSelect.addEventListener("change", async () => {
@@ -639,7 +659,7 @@ async function selectGame(game) {
   } catch (e) {
     currentPreviewInfo = null;
     currentPriceValue.textContent = `${tr().errorPriceFetch} (${e.message})`;
-    console.error("PREVIEW_PRICE failed:", e);
+    // console.error("PREVIEW_PRICE failed:", e);
   }
 }
 

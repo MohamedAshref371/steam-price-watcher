@@ -5,12 +5,14 @@ if (typeof importScripts === "function") {
 }
 
 const ALARM_NAME = "price-check-alarm";
+const RETRY_ALARM_NAME = "price-check-retry-alarm";
 const DEFAULT_SETTINGS = {
   intervalHours: 12,   // 1, 3, 6, 12, or 24
   countryCode: "eg",   // Steam store region (affects currency/pricing) — changeable from the popup
   language: "ar",      // ar or en
   repeatAlerts: true,  // false = notify once per price, true = notify every check while below target
-  sortBy: "default"    // default | cheapest | closest | discount
+  sortBy: "default",   // default | cheapest | closest | discount
+  offlineRetryMinutes: 2 // wait time before re-checking connectivity when a scheduled check finds no internet
 };
 
 // Guesses a reasonable default region and language from the browser's own locale
@@ -31,12 +33,52 @@ function detectDefaultsFromLocale() {
 // ---------- Storage ----------
 
 async function getState() {
-  const data = await chrome.storage.local.get(["games", "settings", "lastChecked"]);
+  const data = await chrome.storage.local.get(["games", "settings", "lastChecked", "offlineRetryAt"]);
   return {
     games: data.games || [],
     settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) },
-    lastChecked: data.lastChecked || null
+    lastChecked: data.lastChecked || null,
+    offlineRetryAt: data.offlineRetryAt || null
   };
+}
+
+// ---------- Connectivity ----------
+
+// Best-effort connectivity check available inside a service worker.
+// Not perfectly reliable (it only reflects the network interface, not true
+// internet reachability), but it's exactly what a browser extension has
+// access to without making a throwaway network request of its own.
+function isOnline() {
+  try {
+    return typeof navigator === "undefined" || navigator.onLine !== false;
+  } catch (e) {
+    return true;
+  }
+}
+
+async function scheduleOfflineRetry() {
+  const { settings } = await getState();
+  const retryMinutes = Math.max(0.5, settings.offlineRetryMinutes || DEFAULT_SETTINGS.offlineRetryMinutes);
+  const retryAt = Date.now() + retryMinutes * 60000;
+  await chrome.storage.local.set({ offlineRetryAt: retryAt });
+  chrome.alarms.create(RETRY_ALARM_NAME, { delayInMinutes: retryMinutes });
+}
+
+async function clearOfflineRetry() {
+  await chrome.alarms.clear(RETRY_ALARM_NAME);
+  await chrome.storage.local.set({ offlineRetryAt: null });
+}
+
+// Runs for both the normal periodic alarm and the offline-retry alarm:
+// checks connectivity first, and either performs the real check or
+// re-arms the retry alarm for another attempt later.
+async function handleScheduledCheck() {
+  if (!isOnline()) {
+    await scheduleOfflineRetry();
+    return;
+  }
+  await clearOfflineRetry();
+  await checkAllGames({ notify: true });
 }
 
 async function saveGames(games) {
@@ -297,6 +339,7 @@ chrome.notifications.onClicked.addListener(notificationId => {
 async function rescheduleAlarm() {
   const { settings, lastChecked } = await getState();
   await chrome.alarms.clear(ALARM_NAME);
+  await clearOfflineRetry();
 
   const periodMinutes = Math.max(1, settings.intervalHours * 60);
 
@@ -315,8 +358,8 @@ async function rescheduleAlarm() {
 }
 
 chrome.alarms.onAlarm.addListener(alarm => {
-  if (alarm.name === ALARM_NAME) {
-    checkAllGames({ notify: true });
+  if (alarm.name === ALARM_NAME || alarm.name === RETRY_ALARM_NAME) {
+    handleScheduledCheck();
   }
 });
 
@@ -410,8 +453,11 @@ async function handleMessage(msg) {
         return { ok: true, data: updatedSettings };
       }
       case "FORCE_CHECK": {
+        if (!isOnline()) {
+          return { ok: false, offline: true, error: tr.offlineError };
+        }
         const result = await checkAllGames({ notify: true });
-        await rescheduleAlarm(); // realign the next scheduled check to this manual one
+        await rescheduleAlarm(); // realign the next scheduled check to this manual one (also clears any pending offline retry)
         return { ok: true, data: result };
       }
       default:

@@ -30,6 +30,8 @@ const TRANSLATIONS = {
     lastCheckedPrefix: "آخر فحص:",
     neverChecked: "لم يتم الفحص بعد",
     checking: "جارٍ الفحص...",
+    offlineError: "لا يوجد اتصال بالإنترنت",
+    offlineRetryMessage: mins => `لا يوجد اتصال بالإنترنت، سيتم إعادة المحاولة خلال ${arabicCount(mins, "minute")}`,
     justNow: "الآن",
     minutesAgo: n => `منذ ${arabicCount(n, "minute")}`,
     hoursAgo: (h, m) => {
@@ -102,6 +104,8 @@ const TRANSLATIONS = {
     lastCheckedPrefix: "Last checked:",
     neverChecked: "Not checked yet",
     checking: "Checking...",
+    offlineError: "No internet connection",
+    offlineRetryMessage: mins => `No internet connection — will retry in ${mins} min${mins !== 1 ? "s" : ""}`,
     justNow: "Just now",
     minutesAgo: n => `${n} min ago`,
     hoursAgo: (h, m) => {
