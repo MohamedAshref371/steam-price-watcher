@@ -120,20 +120,22 @@ function formatRelativeTime(ts, showSub = true) {
   if (!ts) return T.neverChecked;
   const diffMs = Date.now() - ts;
 
-  const totalMins = Math.round(diffMs / 60000);
+  const totalMins = Math.max(0, Math.round(diffMs / 60000));
   if (totalMins < 1) return T.justNow;
   if (totalMins < 60) return T.minutesAgo(totalMins);
 
-  const rawHours = diffMs / 3600000;
-  if (rawHours < 24) {
-    const hours = showSub ? Math.floor(rawHours) : Math.round(rawHours);
-    const remMins = showSub ? totalMins % 60 : 0;
+  const totalHours = Math.floor(totalMins / 60);
+  const remMinsInHour = totalMins % 60;
+  if (totalHours < 24) {
+    const hours = showSub ? totalHours : Math.round(totalMins / 60);
+    const remMins = showSub ? remMinsInHour : 0;
     return T.hoursAgo(hours, remMins);
   }
 
-  const rawDays = diffMs / 86400000;
-  const days = showSub ? Math.floor(rawDays) : Math.round(rawDays);
-  const remHours = showSub ? Math.floor(rawHours) % 24 : 0;
+  const totalDays = Math.floor(totalHours / 24);
+  const remHoursInDay = totalHours % 24;
+  const days = showSub ? totalDays : Math.round(totalHours / 24);
+  const remHours = showSub ? remHoursInDay : 0;
   return T.daysAgo(days, remHours);
 }
 
